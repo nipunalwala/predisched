@@ -8,7 +8,8 @@
 #   docker build -f docker/spark.Dockerfile -t predisched-spark .
 #   docker run --rm -v "$PWD:/work" predisched-spark exec_stats.py \
 #       --input spark/data/execution_history.csv --output spark/out
-FROM apache/spark:3.5.3-python3
+# Java 17 uses Ubuntu Jammy/Python 3.10, required by the pinned NumPy 2.1.
+FROM apache/spark:3.5.3-scala2.12-java17-python3-ubuntu
 
 USER root
 RUN pip3 install --no-cache-dir pandas==2.2.3 numpy==2.1.3 pyarrow==17.0.0
