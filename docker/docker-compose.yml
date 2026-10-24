@@ -64,6 +64,7 @@ services:
     ports: ["50070:50070"]
     volumes:
       - logs:/app/logs
+      - models:/app/ml/models
     depends_on:
       postgres: { condition: service_healthy }
     networks: [predisched]
@@ -138,6 +139,10 @@ services:
               "--spring.datasource.url=jdbc:postgresql://postgres:5432/predisched"]
     ports: ["8080:8080"]
     mem_limit: 768m
+    volumes:
+      - logs:/app/logs
+      - models:/app/ml/models:ro
+      - ../results/benchmark:/app/results/benchmark:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health"]
       interval: 5s
@@ -198,6 +203,7 @@ services:
 volumes:
   pgdata:
   logs:
+  models:
 
 networks:
   predisched:

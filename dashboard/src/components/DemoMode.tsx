@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { postJson } from "../api/client";
+import { getJson, postJson } from "../api/client";
+import type { Overview } from "../api/types";
 import { Button } from "./ui/primitives";
 
 interface Step {
@@ -40,23 +41,51 @@ export function DemoMode({ open, onClose, firstWorker }: { open: boolean; onClos
   useEffect(() => {
     if (!open) return;
     cancelled.current = false;
+    let stopped = false;
+    const isStopped = () => stopped || cancelled.current;
     (async () => {
-      for (let i = 0; i < STEPS.length && !cancelled.current; i++) {
+      setNote("");
+      for (let i = 0; i < STEPS.length && !isStopped(); i++) {
         setStep(i);
         navigateRef.current(STEPS[i].page);
         try {
-          await STEPS[i].run({ firstWorker: workerRef.current });
+          const result = await STEPS[i].run({ firstWorker: workerRef.current });
+          if (isStopped()) return;
+          if (result && typeof result === "object" && "ok" in result && result.ok === false) {
+            throw new Error("message" in result ? String(result.message) : "Action refused");
+          }
           setNote("");
+          await new Promise((r) => setTimeout(r, STEPS[i].waitMs));
+          if (i === 1) {
+            setNote("Waiting for the new primary to finish recovery…");
+            const deadline = Date.now() + 120_000;
+            let ready = false;
+            while (!isStopped() && Date.now() < deadline) {
+              try {
+                const { cluster } = await getJson<Overview>("/api/overview");
+                ready = cluster?.leaderId != null && cluster.workers.some((w) => w.healthy);
+              } catch {
+                // The API can briefly be unavailable during primary recovery.
+              }
+              if (ready) break;
+              await new Promise((r) => setTimeout(r, 1000));
+            }
+            if (isStopped()) return;
+            if (!ready) throw new Error("The new primary did not become ready within two minutes");
+            setNote("");
+          }
         } catch (e) {
+          if (isStopped()) return;
           setNote(`(step failed: ${(e as Error).message})`);
+          return;
         }
-        await new Promise((r) => setTimeout(r, STEPS[i].waitMs));
       }
-      if (!cancelled.current) {
+      if (!isStopped()) {
         setStep(STEPS.length);
       }
     })();
     return () => {
+      stopped = true;
       cancelled.current = true;
     };
   }, [open]);

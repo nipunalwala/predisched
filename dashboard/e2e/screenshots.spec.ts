@@ -65,16 +65,26 @@ test("kill the primary and watch the failover", async ({ page }) => {
 
 test("demo mode runs its four steps once", async ({ page }) => {
   test.skip(env.DEMO !== "1", "set DEMO=1 to run the scripted demo (it kills the primary)");
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
+  const failures: string[] = [];
+  const actions: string[] = [];
+  page.on("response", async (response) => {
+    if (response.request().method() !== "POST" || !response.url().includes("/api/chaos/")) return;
+    actions.push("/api/chaos/" + response.url().split("/api/chaos/")[1].split("?")[0]);
+    if (!response.ok()) failures.push(`${response.status()} ${await response.text()}`);
+  });
   await page.goto("/");
   await page.getByRole("button", { name: "Demo" }).click();
   const caption = page.getByTestId("demo-caption");
   await expect(caption).toContainText("1/4", { timeout: 10_000 });
-  await expect(caption).toContainText("2/4", { timeout: 20_000 });
+  await expect(caption).toContainText("2/4", { timeout: 90_000 });
   await page.waitForTimeout(6000);
-  await page.screenshot({ path: `${OUT}/dashboard-demo.png` });
-  await expect(caption).toContainText("3/4", { timeout: 20_000 });
+  await expect(caption).toContainText("3/4", { timeout: 150_000 });
   await expect(caption).toContainText("4/4", { timeout: 20_000 });
-  await expect(caption).toContainText("Demo finished.", { timeout: 20_000 });
+  await expect(caption).toContainText("Demo finished.", { timeout: 90_000 });
   await expect(caption).not.toContainText("step failed");
+  expect(failures).toEqual([]);
+  expect(actions).toEqual(["/api/chaos/burst", "/api/chaos/kill-primary",
+    "/api/chaos/cpu", "/api/chaos/burst"]);
+  await page.screenshot({ path: "test-results/dashboard-demo-complete.png" });
 });

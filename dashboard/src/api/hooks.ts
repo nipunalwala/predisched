@@ -61,7 +61,7 @@ export const useModels = () =>
   useQuery({ queryKey: ["models"], queryFn: () => getJson<{ models: Record<string, Row>; drift: Row[]; error?: string }>("/api/models"), refetchInterval: 15000 });
 
 export const useBenchmarks = () =>
-  useQuery({ queryKey: ["benchmarks"], queryFn: () => getJson<{ suites: Row[]; runs: Row[]; reports: string[] }>("/api/benchmarks?limit=2000"), refetchInterval: 30000 });
+  useQuery({ queryKey: ["benchmarks"], queryFn: () => getJson<{ suites: Row[]; runs: Row[]; reports: string[]; source: "archive" | "database" }>("/api/benchmarks?limit=2000"), refetchInterval: 30000 });
 
 export const useLeader = () =>
   useQuery({ queryKey: ["leader"], queryFn: () => getJson<LeaderResponse>("/api/cluster/leader"), refetchInterval: 2000 });

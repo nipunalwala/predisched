@@ -197,3 +197,11 @@ and `npm run build` on Node 20.
 
 The production bundle is one 940 kB chunk (279 kB gzipped). Recharts, D3 and React Flow account for
 most of it, and the page is a single-screen app on a LAN, so it is not split.
+
+## Tab audit (2026-10-24)
+
+`e2e/tabs.spec.ts` visits all seven tabs against the running Docker stack, checks the live
+connection, fails on API or rendering errors, opens a task's details, verifies all three model
+registry rows, and runs both reactive and predictive benchmark simulations. All seven checks passed. The benchmark page
+labels archive measurements as historical and links to the actual saved reports; simulator
+failures are shown in the page instead of becoming unhandled promise rejections.

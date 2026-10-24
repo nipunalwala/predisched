@@ -37,8 +37,11 @@ public class ModelController {
     public Map<String, Object> accuracy(@RequestParam(defaultValue = "500") int limit) {
         int n = Math.max(1, Math.min(limit, 5_000));
         List<Map<String, Object>> rows = repo.accuracy(n);
-        return Map.of("recent", rows, "byType", repo.accuracyByType(n),
-                "rollingMaeMs", rows.isEmpty() ? null : rows.get(0).get("rolling_mae_ms"));
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("recent", rows);
+        out.put("byType", repo.accuracyByType(n));
+        out.put("rollingMaeMs", rows.isEmpty() ? null : rows.get(0).get("rolling_mae_ms"));
+        return out;
     }
 
     /** registry.json with each version's test metrics, plus the recent drift episodes. */

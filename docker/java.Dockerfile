@@ -33,6 +33,7 @@ COPY predisched-replication predisched-replication
 COPY predisched-fault predisched-fault
 COPY predisched-benchmark predisched-benchmark
 COPY predisched-dashboard-api predisched-dashboard-api
+COPY db db
 RUN mvn -B -q -DskipTests package
 
 FROM eclipse-temurin:17-jre
@@ -52,6 +53,10 @@ COPY testdata testdata
 COPY docker/entrypoint.sh /usr/local/bin/predisched
 RUN chmod 755 /usr/local/bin/predisched \
     && mkdir -p logs results \
+    && mkdir -p predisched-client/target predisched-benchmark/target \
+    && ln -s /app/jars/predisched-client.jar predisched-client/target/predisched-client.jar \
+    && ln -s /app/jars/predisched-benchmark.jar predisched-benchmark/target/predisched-benchmark.jar \
+    && sed -i 's|http://localhost:8100|http://mock-http:8100|g' configs/workloads.yaml \
     && chown -R predisched:predisched /app
 USER predisched
 # Containers get a memory limit; let the heap follow it.

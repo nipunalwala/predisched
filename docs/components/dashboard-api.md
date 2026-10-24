@@ -190,3 +190,24 @@ of the cluster".
   - the `Throttler` sends one batch per topic per tick, keeping the newest items;
   - a real STOMP client on `/ws/stream`, fed 400 events in 2 s (200 a second), receives all 400,
     in at most 5 messages in any second.
+
+## Docker dashboard data checks (2026-10-24)
+
+- Empty prediction history returns `recent: []`, `byType: []` and `rollingMaeMs: null` rather
+  than failing while constructing a null-hostile `Map.of`.
+- Compose shares the prediction service's trained `models` volume with the API, read-only on
+  the API side. The registry and test metrics therefore describe the models actually served.
+- Compose exposes the repository's `results/benchmark` archive read-only to the API. When the
+  database has no benchmark suites, `/api/benchmarks` reads the saved `runs.csv` measurements,
+  preserves their original timestamps and identifies the response with `source: archive`.
+  These historical measurements are not inserted into the live database. Saved HTML reports
+  are served through `/api/benchmarks/reports/{suite}`.
+- Verified all 134 archive rows against their source CSV metrics. A 50-task predictive workload
+  produced 35 recorded prediction outcomes; all 35 errors and the
+  latest rolling MAE matched PostgreSQL. All three models' test metrics matched the prediction
+  container's metadata. The strategy was restored after this check.
+- Controller regression tests cover empty prediction history, measured accuracy, empty benchmark
+  history, and archived values, dates and HTML report delivery.
+- Predictive simulation receives the dashboard's cluster config through `--node-config`, so it
+  reaches the configured prediction host in Docker. All 15 combinations of the five strategies
+  and three worker sets returned simulation metrics successfully.

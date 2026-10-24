@@ -52,9 +52,12 @@ public final class Simulate {
         PredictionClient client = null;
         SchedulingStrategy strategy;
         if (strategyName.equals("predictive")) {
-            NodeConfig.PredictionConfig prediction = new NodeConfig.PredictionConfig();
+            NodeConfig.PredictionConfig prediction = opts.containsKey("--node-config")
+                    ? NodeConfig.load(Paths.get(opts.get("--node-config"))).getPrediction()
+                    : new NodeConfig.PredictionConfig();
             prediction.setEnabled(true);
-            prediction.setPort(Integer.parseInt(opts.getOrDefault("--prediction-port", "50070")));
+            prediction.setPort(Integer.parseInt(opts.getOrDefault("--prediction-port",
+                    String.valueOf(prediction.getPort()))));
             prediction.setTimeoutMs(1_000);
             prediction.setLatencyLogEvery(0);
             client = PredictionClient.create(prediction);

@@ -9,6 +9,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -24,6 +26,8 @@ import com.predisched.proto.SetStrategyResponse;
 import com.predisched.proto.TaskResponse;
 import com.predisched.proto.WorkerEntry;
 import java.nio.file.Paths;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -63,6 +67,9 @@ class ControllersTest {
     @Autowired
     AdminGuard guard;
 
+    @Autowired
+    DashboardProperties props;
+
     @org.junit.jupiter.api.BeforeEach
     void fullBucket() {
         guard.reset();
@@ -76,6 +83,81 @@ class ControllersTest {
                         .setPoolSize(4).setHost("localhost").setPort(51061))
                 .addWorkers(WorkerEntry.newBuilder().setWorkerId("worker-2").setHealthy(false))
                 .build();
+    }
+
+    @Test
+    void simulatorUsesTheClustersPredictionAddress() throws Exception {
+        when(jobs.java()).thenReturn("java");
+        when(jobs.root()).thenReturn(Paths.get(".."));
+        when(jobs.run(any(), any(), anyLong())).thenReturn(new Jobs.Result(1, "not running"));
+        props.setClusterConfig("configs/docker.yaml");
+        try {
+            mvc.perform(post("/api/simulate").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"strategy\":\"predictive\"}"))
+                    .andExpect(status().isOk());
+            verify(jobs).run(argThat(command -> command.contains("--node-config")
+                    && command.contains("configs/docker.yaml")), any(), anyLong());
+        } finally {
+            props.setClusterConfig("");
+        }
+    }
+
+    @Test
+    void predictionAccuracyIsEmptyUntilPredictiveTasksComplete() throws Exception {
+        when(repo.accuracy(500)).thenReturn(List.of());
+        when(repo.accuracyByType(500)).thenReturn(List.of());
+        mvc.perform(get("/api/predictions/accuracy"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recent", hasSize(0)))
+                .andExpect(jsonPath("$.byType", hasSize(0)))
+                .andExpect(jsonPath("$.rollingMaeMs").value(nullValue()));
+    }
+
+    @Test
+    void predictionAccuracyKeepsTheMeasuredMae() throws Exception {
+        when(repo.accuracy(500)).thenReturn(List.of(Map.of("rolling_mae_ms", 12.5)));
+        when(repo.accuracyByType(500)).thenReturn(List.of(Map.of("task_type", "CPU_TASK",
+                "n", 2, "mae_ms", 12.5)));
+        mvc.perform(get("/api/predictions/accuracy"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rollingMaeMs").value(12.5))
+                .andExpect(jsonPath("$.byType[0].n").value(2));
+    }
+
+    @Test
+    void benchmarkHistoryCanBeEmpty() throws Exception {
+        when(jobs.root()).thenReturn(Paths.get("target/no-benchmarks"));
+        when(repo.suites()).thenReturn(List.of());
+        when(repo.benchmarks(200)).thenReturn(List.of());
+        mvc.perform(get("/api/benchmarks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.suites", hasSize(0)))
+                .andExpect(jsonPath("$.runs", hasSize(0)));
+    }
+
+    @Test
+    void benchmarkArchiveKeepsMeasuredValuesAndOriginalDates(
+            @org.junit.jupiter.api.io.TempDir Path root) throws Exception {
+        Path suite = Files.createDirectories(root.resolve("results/benchmark/recorded-suite"));
+        Files.writeString(suite.resolve("runs.csv"),
+                "run_id,index,scenario,strategy,rep,started_at,tasks,mean_latency_ms,mae_ms\n"
+                + "run-1,1,mixed,predictive,1,1790500049964,240,123.45,\n");
+        Files.writeString(suite.resolve("report.html"), "<html>Recorded measurements</html>");
+        when(jobs.root()).thenReturn(root);
+        when(repo.suites()).thenReturn(List.of());
+        when(repo.benchmarks(200)).thenReturn(List.of());
+        mvc.perform(get("/api/benchmarks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("archive"))
+                .andExpect(jsonPath("$.suites[0].suite").value("recorded-suite"))
+                .andExpect(jsonPath("$.suites[0].runs").value(1))
+                .andExpect(jsonPath("$.runs[0].scenario").value("benchmark:recorded-suite:mixed"))
+                .andExpect(jsonPath("$.runs[0].created_at").value("2026-09-27T09:07:29.964Z"))
+                .andExpect(jsonPath("$.runs[0].metrics", containsString("123.45")));
+        mvc.perform(get("/api/benchmarks/reports/recorded-suite"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .content().string("<html>Recorded measurements</html>"));
     }
 
     @Test

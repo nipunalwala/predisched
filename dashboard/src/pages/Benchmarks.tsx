@@ -27,11 +27,16 @@ export function BenchmarksPage() {
   const [simBusy, setSimBusy] = useState(false);
   const simulate = async () => {
     setSimBusy(true);
-    try { setSim(await postJson<Row>("/api/simulate", simForm)); } finally { setSimBusy(false); }
+    try { setSim(await postJson<Row>("/api/simulate", simForm)); }
+    catch (error) { setSim({ error: (error as Error).message }); }
+    finally { setSimBusy(false); }
   };
 
   return (
     <div className="space-y-4">
+      {benchmarks.data?.source === "archive" && <p className="text-sm text-muted">
+        Saved benchmark measurements from the archived suites below. These are historical results, not live cluster metrics.
+      </p>}
       <Card title={`Strategy comparison${chosen ? ` · suite ${chosen}` : ""}`} action={
         <div className="flex gap-2 text-sm">
           <select aria-label="suite" className="h-8 rounded border border-rule bg-panel px-2" value={chosen} onChange={(e) => setSuite(e.target.value)}>
@@ -53,7 +58,7 @@ export function BenchmarksPage() {
           <PanelState kind="notbuilt" message="Not built yet: needs per-task latencies the API does not serve; the suite report has it" />
           <div className="flex flex-wrap justify-center gap-3 text-sm">
             {(benchmarks.data?.reports ?? []).map((r) => (
-              <a key={r} href={`${API_URL.replace(/:\d+$/, ":8080")}/${r}`} className="text-accent underline" target="_blank" rel="noreferrer">{r}</a>
+              <a key={r} href={`${API_URL}/${r}`} className="text-accent underline" target="_blank" rel="noreferrer">{r.split("/").slice(-1)[0]} report</a>
             ))}
           </div>
         </Card>
