@@ -3,6 +3,7 @@ import { RANGE_MINUTES, sinceMs, useApp } from "../AppContext";
 import { KpiStrip } from "../components/KpiStrip";
 import { QueueChart } from "../components/QueueChart";
 import { Topology } from "../components/Topology";
+import { WorkloadControl } from "../components/WorkloadControl";
 import { Ring } from "../components/ui/charts";
 import { Card, Guard, PanelState } from "../components/ui/primitives";
 import { history } from "../history";
@@ -22,7 +23,11 @@ export function OverviewPage() {
       <div className="grid gap-4 xl:grid-cols-3">
         <Card title="Cluster topology" className="xl:col-span-2">
           <Guard query={overview}>
-            {(o) => (o.cluster ? <Topology cluster={o.cluster} /> : <PanelState kind="error" message={o.clusterError} />)}
+            {(o) => o.cluster ? <>
+              <WorkloadControl ready={o.cluster.leaderId != null && !o.cluster.paused && o.cluster.workers.some((w) => w.healthy && !w.draining)}
+                idle={o.cluster.queueDepth === 0 && o.cluster.running === 0 && o.cluster.nodes.every((n) => n.reachable) && o.cluster.workers.every((w) => w.healthy)} />
+              <Topology cluster={o.cluster} />
+            </> : <PanelState kind="error" message={o.clusterError} />}
           </Guard>
         </Card>
         <Card title="Busy slots">
