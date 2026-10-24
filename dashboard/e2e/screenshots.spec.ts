@@ -75,6 +75,8 @@ test("demo mode runs its four steps once", async ({ page }) => {
   });
   await page.goto("/dashboard");
   await page.getByRole("button", { name: "Demo" }).click();
+  await expect(page.getByRole("button", { name: "Start demo" })).toBeEnabled({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Start demo" }).click();
   const caption = page.getByTestId("demo-caption");
   await expect(caption).toContainText("1/4", { timeout: 10_000 });
   await expect(caption).toContainText("2/4", { timeout: 90_000 });

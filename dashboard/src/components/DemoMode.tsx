@@ -1,104 +1,122 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getJson, postJson } from "../api/client";
-import type { Overview } from "../api/types";
+import type { ClusterSnapshot, Overview } from "../api/types";
 import { Button } from "./ui/primitives";
 
-interface Step {
-  caption: string;
-  page: string;
-  run: (ctx: { firstWorker: string }) => Promise<unknown>;
-  waitMs: number;
-}
-
-const STEPS: Step[] = [
-  { caption: "1/4 · Submitting a mixed workload: watch throughput and the queue rise.", page: "/dashboard",
-    run: () => postJson("/api/chaos/burst", { tasks: 150, profile: "mixed" }, true), waitMs: 10_000 },
-  { caption: "2/4 · Killing the primary scheduler: an election picks a new leader, a backup is promoted.",
-    page: "/cluster", run: () => postJson("/api/chaos/kill-primary", {}, true), waitMs: 12_000 },
-  { caption: "3/4 · Spiking the CPU on a worker so its overload risk climbs.", page: "/cluster",
-    run: ({ firstWorker }) => postJson("/api/chaos/cpu", { node: firstWorker, seconds: 20 }, true), waitMs: 10_000 },
-  { caption: "4/4 · A burst of 200 tasks: spike handling (and auto-scaling, when it is on).", page: "/dashboard",
-    run: () => postJson("/api/chaos/burst", { tasks: 200, profile: "bursty" }, true), waitMs: 12_000 },
+const RESTORE = "docker compose -f docker/docker-compose.yml up -d --no-deps scheduler-1 scheduler-2 scheduler-3 scheduler-4 scheduler-5 worker-1 worker-2 worker-3";
+const STEPS = [
+  { caption: "1/4 · Submitting a mixed workload: watch throughput and the queue rise.", page: "/dashboard", action: "burst", body: { tasks: 150, profile: "mixed" }, wait: 10_000 },
+  { caption: "2/4 · Killing the primary scheduler: waiting for a new leader and recovery.", page: "/cluster", action: "kill-primary", body: {}, wait: 12_000 },
+  { caption: "3/4 · Spiking worker CPU for 20 seconds.", page: "/cluster", action: "cpu", body: {}, wait: 10_000 },
+  { caption: "4/4 · Submitting 200 bursty tasks: watch spike handling.", page: "/dashboard", action: "burst", body: { tasks: 200, profile: "bursty" }, wait: 12_000 },
 ];
+function readiness(c?: ClusterSnapshot | null): string[] {
+  if (!c) return ["Cluster snapshot unavailable"];
+  const checks: string[] = [];
+  if (c.leaderId == null) checks.push("No primary scheduler");
+  if (c.nodes.length < 2 || c.nodes.some((n) => !n.reachable)) checks.push("Restore all schedulers before another failover demo");
+  if (!c.workers.length || c.workers.some((w) => !w.healthy || w.draining)) checks.push("Restore healthy, non-draining workers");
+  if (c.paused) checks.push("Resume the queue before starting");
+  if (c.queueDepth || c.running) checks.push("Wait for the cluster to become idle");
+  if (Date.now() - c.atMs > 10_000) checks.push("Cluster snapshot is stale");
+  return checks;
+}
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/**
- * Demo mode (spec §15.9): a scripted sequence driven by the real API, with on-screen captions.
- * Each step is a real admin call; the dashboard shows the effect as it happens.
- */
 export function DemoMode({ open, onClose, firstWorker }: { open: boolean; onClose: () => void; firstWorker: string }) {
+  const [phase, setPhase] = useState<"checking" | "ready" | "running" | "done" | "failed">("checking");
   const [step, setStep] = useState(-1);
   const [note, setNote] = useState("");
+  const [issues, setIssues] = useState<string[]>([]);
+  const [results, setResults] = useState<string[]>([]);
+  const [summary, setSummary] = useState("");
+  const [snapshot, setSnapshot] = useState<ClusterSnapshot | null>(null);
+  const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
-  const cancelled = useRef(false);
-  // useNavigate returns a new function on every route change, and the demo changes routes: read
-  // both through refs so the sequence runs once per opening instead of restarting at each step.
-  const navigateRef = useRef(navigate);
-  navigateRef.current = navigate;
-  const workerRef = useRef(firstWorker);
-  workerRef.current = firstWorker;
-
+  const navigateRef = useRef(navigate); navigateRef.current = navigate;
+  const generation = useRef(0);
+  const cancel = () => { generation.current++; };
+  const check = async () => {
+    const token = ++generation.current;
+    setPhase("checking"); setNote(""); setCopied(false);
+    try {
+      const { cluster } = await getJson<Overview>("/api/overview");
+      if (token !== generation.current) return;
+      setSnapshot(cluster); setIssues(readiness(cluster)); setPhase("ready");
+    } catch (e) { if (token === generation.current) { setSnapshot(null); setIssues([(e as Error).message]); setPhase("ready"); } }
+  };
   useEffect(() => {
-    if (!open) return;
-    cancelled.current = false;
-    let stopped = false;
-    const isStopped = () => stopped || cancelled.current;
-    (async () => {
-      setNote("");
-      for (let i = 0; i < STEPS.length && !isStopped(); i++) {
-        setStep(i);
-        navigateRef.current(STEPS[i].page);
-        try {
-          const result = await STEPS[i].run({ firstWorker: workerRef.current });
-          if (isStopped()) return;
-          if (result && typeof result === "object" && "ok" in result && result.ok === false) {
-            throw new Error("message" in result ? String(result.message) : "Action refused");
-          }
-          setNote("");
-          await new Promise((r) => setTimeout(r, STEPS[i].waitMs));
-          if (i === 1) {
-            setNote("Waiting for the new primary to finish recovery…");
-            const deadline = Date.now() + 120_000;
-            let ready = false;
-            while (!isStopped() && Date.now() < deadline) {
-              try {
-                const { cluster } = await getJson<Overview>("/api/overview");
-                ready = cluster?.leaderId != null && cluster.workers.some((w) => w.healthy);
-              } catch {
-                // The API can briefly be unavailable during primary recovery.
-              }
-              if (ready) break;
-              await new Promise((r) => setTimeout(r, 1000));
-            }
-            if (isStopped()) return;
-            if (!ready) throw new Error("The new primary did not become ready within two minutes");
-            setNote("");
-          }
-        } catch (e) {
-          if (isStopped()) return;
-          setNote(`(step failed: ${(e as Error).message})`);
-          return;
-        }
-      }
-      if (!isStopped()) {
-        setStep(STEPS.length);
-      }
-    })();
-    return () => {
-      stopped = true;
-      cancelled.current = true;
-    };
+    if (open) { setStep(-1); setResults([]); setSummary(""); void check(); }
+    return cancel;
   }, [open]);
 
+  const run = async () => {
+    if (phase !== "ready" || issues.length) return;
+    const token = ++generation.current;
+    const stopped = () => token !== generation.current;
+    setPhase("running"); setResults([]); setSummary(""); setNote("Checking readiness again…");
+    let submitted = 0;
+    try {
+      const before = (await getJson<Overview>("/api/overview")).cluster;
+      if (stopped()) return;
+      const problems = readiness(before);
+      if (problems.length) { setIssues(problems); setPhase("ready"); setNote(""); return; }
+      const oldLeader = before!.leaderId;
+      const worker = before!.workers.find((w) => w.healthy && !w.draining)?.workerId ?? firstWorker;
+      for (let i = 0; i < STEPS.length; i++) {
+        if (stopped()) return;
+        const s = STEPS[i]; setStep(i); setNote(""); navigateRef.current(s.page);
+        const result = await postJson<{ ok: boolean; message?: string }>(`/api/chaos/${s.action}`, i === 2 ? { node: worker, seconds: 20 } : s.body, true);
+        if (stopped()) return;
+        if (!result.ok) throw new Error(result.message || "Action refused");
+        submitted += i === 0 ? 150 : i === 3 ? 200 : 0;
+        setResults((r) => [...r, `${i + 1}/4 · ${i === 0 ? "150 mixed tasks submitted" : i === 1 ? "Primary crash accepted" : i === 2 ? `CPU spike accepted on ${worker}` : "200 bursty tasks submitted"}`]);
+        await sleep(s.wait);
+        if (stopped()) return;
+        if (i === 1 || i === 3) {
+          const started = Date.now(); let ready = false;
+          while (!stopped() && Date.now() - started < 120_000) {
+            setNote(`Waiting for ${i === 1 ? "new primary recovery" : "queue to drain"}… ${Math.floor((Date.now() - started) / 1000)} / 120 s`);
+            try {
+              const c = (await getJson<Overview>("/api/overview")).cluster;
+              ready = !!c && c.leaderId != null && !c.paused && c.workers.some((w) => w.healthy && !w.draining)
+                && (i === 1 ? c.leaderId !== oldLeader : c.queueDepth === 0 && c.running === 0);
+            } catch { /* transient during failover */ }
+            if (ready) break;
+            await sleep(1000);
+          }
+          if (stopped()) return;
+          if (!ready) throw new Error(i === 1 ? "Primary recovery timed out" : "Tasks still running after two minutes");
+          if (i === 1) setResults((r) => [...r, "New primary ready; workload can continue"]);
+        }
+      }
+      const after = (await getJson<Overview>("/api/overview")).cluster;
+      if (stopped()) return;
+      const delta = (key: "tasksCompleted" | "tasksFailed") => after && before && after[key] >= before[key] ? String(after[key] - before[key]) : "unavailable";
+      setSummary(`${submitted} tasks submitted. Cluster-wide change during demo: ${delta("tasksCompleted")} completed, ${delta("tasksFailed")} failed. Includes any concurrent work; counters may reset during failover.`);
+      setSnapshot(after); setNote(""); setPhase("done"); setStep(STEPS.length);
+    } catch (e) {
+      if (stopped()) return;
+      setNote(`Step failed: ${(e as Error).message}`); setSummary(`${submitted} tasks submitted before the failure. Restore nodes and recheck readiness before retrying.`); setPhase("failed");
+    }
+  };
   if (!open) return null;
-  const caption = step < 0 ? "Starting…" : step >= STEPS.length ? "Demo finished." : STEPS[step].caption;
-  return (
-    <div className="fixed bottom-6 left-1/2 z-50 flex w-[min(90vw,760px)] -translate-x-1/2 items-center gap-4 rounded-xl border border-rule bg-panel px-5 py-4 shadow-2xl"
-      role="status" aria-live="polite" data-testid="demo-caption">
-      <p className="flex-1 text-base font-medium">{caption} <span className="text-sm text-muted">{note}</span></p>
-      <Button variant="outline" onClick={() => { cancelled.current = true; setStep(-1); onClose(); }}>
-        {step >= STEPS.length ? "Close" : "Stop"}
-      </Button>
-    </div>
-  );
+  return <section className="fixed bottom-4 left-1/2 z-50 max-h-[75vh] w-[min(94vw,800px)] -translate-x-1/2 overflow-auto rounded-xl border border-rule bg-panel p-4 text-ink shadow-2xl" aria-label="Demo mode" data-testid="demo-caption">
+    <div className="flex items-start justify-between gap-4"><h2 className="font-semibold">{phase === "done" ? "Demo finished." : phase === "running" && step >= 0 ? STEPS[step]?.caption : "Demo readiness"}</h2>
+      <Button variant="outline" size="sm" onClick={() => { generation.current++; onClose(); }}>{phase === "running" ? "Stop" : "Close"}</Button></div>
+    <p className="mt-2 text-sm" role="status">{phase === "checking" ? "Checking primary, workers, queue and scheduler availability…" : note || (phase === "ready" ? issues.length ? "Not ready to run" : "Cluster ready for the demo" : "")}</p>
+    {phase === "ready" && <><p className="mt-2 text-sm text-muted">Runs 350 real tasks, crashes the primary and spikes worker CPU. Stopping prevents the next action; accepted tasks and faults continue.</p><ul className="mt-2 space-y-1 text-sm" style={{ color: "var(--warn)" }}>{issues.map((s) => <li key={s}>{s}</li>)}</ul>
+      {snapshot && <p className="mt-2 text-xs text-muted">Primary S{snapshot.leaderId ?? "?"} · {snapshot.nodes.filter((n) => n.reachable).length}/{snapshot.nodes.length} schedulers reachable · {snapshot.workers.filter((w) => w.healthy && !w.draining).length}/{snapshot.workers.length} workers available</p>}
+      <Button className="mt-3" disabled={issues.length > 0} onClick={run}>Start demo</Button></>}
+    {!!results.length && <ol className="mt-3 space-y-1 text-xs text-muted">{results.map((r) => <li key={r}>{r}</li>)}</ol>}
+    {summary && <p className="mt-3 text-sm">{summary}</p>}
+    {phase !== "running" && <details className="mt-3 border-t border-rule pt-3 text-xs" open={phase === "done" || phase === "failed" || issues.length > 0}>
+      <summary className="cursor-pointer font-medium">Restore nodes before another run</summary>
+      <p className="mt-2 text-muted">Run from the repository folder on the Docker host. This starts stopped nodes; wait for recovery, then recheck. For a drained worker, restart that worker container separately. CPU injection expires after 20 seconds.</p>
+      <code className="mt-2 block break-all rounded bg-surface p-2">{RESTORE}</code>
+      <div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(RESTORE); setCopied(true); } catch { setNote("Select and copy the command above."); } }}>{copied ? "Command copied" : "Copy restore command"}</Button>
+        <Button size="sm" variant="outline" disabled={phase === "checking"} onClick={check}>Recheck readiness</Button></div>
+    </details>}
+  </section>;
 }
