@@ -18,4 +18,4 @@ ENV OMPI_ALLOW_RUN_AS_ROOT=1 \
 
 WORKDIR /work/mpi
 # First argument: number of ranks; the rest: the module and its arguments.
-ENTRYPOINT ["/bin/bash", "-c", "n=\"$0\"; exec mpiexec -n \"$n\" python -m \"$@\""]
+ENTRYPOINT ["/bin/bash", "-c", "n=\"$0\"; exec mpiexec --oversubscribe -n \"$n\" python -m \"$@\""]
