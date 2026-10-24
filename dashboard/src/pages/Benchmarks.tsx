@@ -3,6 +3,7 @@ import { API_URL, postJson } from "../api/client";
 import { useBenchmarks } from "../api/hooks";
 import type { Row } from "../api/types";
 import { StrategyBars, StrategyRadar, suiteCells } from "../components/BenchmarkCharts";
+import { BenchmarkComparison } from "../components/BenchmarkComparison";
 import { Button, Card, Guard, PanelState } from "../components/ui/primitives";
 
 const METRICS: [string, string][] = [
@@ -50,6 +51,7 @@ export function BenchmarksPage() {
           {() => <StrategyBars cells={cells} metric={metric} label={METRICS.find((m) => m[0] === metric)?.[1] ?? metric} />}
         </Guard>
       </Card>
+      <BenchmarkComparison key={chosen} cells={cells} />
       <div className="grid gap-4 xl:grid-cols-2">
         <Card title="Overall profile (normalised per scenario)">
           {cells.length ? <StrategyRadar cells={cells} /> : <PanelState kind="empty" />}
