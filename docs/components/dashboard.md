@@ -11,6 +11,10 @@ Within a few seconds of loading, a viewer sees:
 - what the scheduler predicts;
 - whether those predictions come true.
 
+The introduction is served at `/`; its **Open dashboard** links lead to `/dashboard`.
+The live overview, polling and WebSocket connection start only inside the dashboard. Existing
+feature URLs such as `/cluster`, `/tasks` and `/predictions` remain available directly.
+
 ```
 cd dashboard
 npm ci

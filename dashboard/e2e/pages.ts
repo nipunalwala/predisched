@@ -1,6 +1,6 @@
 /** The seven pages, in navigation order (keys 1-7). */
 export const PAGES: [string, string][] = [
-  ["/", "overview"],
+  ["/dashboard", "overview"],
   ["/cluster", "cluster"],
   ["/tasks", "tasks"],
   ["/predictions", "predictions"],

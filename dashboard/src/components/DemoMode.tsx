@@ -12,13 +12,13 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { caption: "1/4 · Submitting a mixed workload: watch throughput and the queue rise.", page: "/",
+  { caption: "1/4 · Submitting a mixed workload: watch throughput and the queue rise.", page: "/dashboard",
     run: () => postJson("/api/chaos/burst", { tasks: 150, profile: "mixed" }, true), waitMs: 10_000 },
   { caption: "2/4 · Killing the primary scheduler: an election picks a new leader, a backup is promoted.",
     page: "/cluster", run: () => postJson("/api/chaos/kill-primary", {}, true), waitMs: 12_000 },
   { caption: "3/4 · Spiking the CPU on a worker so its overload risk climbs.", page: "/cluster",
     run: ({ firstWorker }) => postJson("/api/chaos/cpu", { node: firstWorker, seconds: 20 }, true), waitMs: 10_000 },
-  { caption: "4/4 · A burst of 200 tasks: spike handling (and auto-scaling, when it is on).", page: "/",
+  { caption: "4/4 · A burst of 200 tasks: spike handling (and auto-scaling, when it is on).", page: "/dashboard",
     run: () => postJson("/api/chaos/burst", { tasks: 200, profile: "bursty" }, true), waitMs: 12_000 },
 ];
 

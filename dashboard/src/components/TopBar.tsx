@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Pause, Play, PlayCircle } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { postJson } from "../api/client";
 import type { Overview } from "../api/types";
 import { useApp, type Range } from "../AppContext";
@@ -8,7 +8,7 @@ import { THEMES, type Theme } from "../theme/palette";
 import { Button } from "./ui/primitives";
 
 export const PAGES = [
-  { path: "/", label: "Overview" },
+  { path: "/dashboard", label: "Overview" },
   { path: "/cluster", label: "Cluster" },
   { path: "/tasks", label: "Tasks" },
   { path: "/predictions", label: "Predictions" },
@@ -37,7 +37,7 @@ export function TopBar({ overview, onDemo }: { overview?: Overview; onDemo: () =
   return (
     <header className="sticky top-0 z-30 border-b border-rule bg-panel">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2 text-sm">
-        <span className="text-base font-bold tracking-tight">PrediSched</span>
+        <Link to="/" aria-label="PrediSched home" className="text-base font-bold tracking-tight">PrediSched</Link>
         <span className="flex items-center gap-1.5" data-testid="connection" title="live stream">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: dot }} />
           <span className="font-medium">{label}</span>

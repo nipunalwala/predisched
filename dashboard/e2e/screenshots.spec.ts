@@ -73,7 +73,7 @@ test("demo mode runs its four steps once", async ({ page }) => {
     actions.push("/api/chaos/" + response.url().split("/api/chaos/")[1].split("?")[0]);
     if (!response.ok()) failures.push(`${response.status()} ${await response.text()}`);
   });
-  await page.goto("/");
+  await page.goto("/dashboard");
   await page.getByRole("button", { name: "Demo" }).click();
   const caption = page.getByTestId("demo-caption");
   await expect(caption).toContainText("1/4", { timeout: 10_000 });
