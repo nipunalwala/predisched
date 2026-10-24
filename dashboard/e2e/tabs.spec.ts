@@ -22,7 +22,7 @@ for (const [path, name] of PAGES) {
     if (name === "tasks") {
       await page.getByTestId("task-table").getByRole("button").first().click();
       await expect(page.getByRole("dialog")).toBeVisible();
-      await expect(page.getByRole("dialog").getByText("exec_time_ms", { exact: true })).toBeVisible();
+      await expect(page.getByRole("dialog").getByText("Execution time (ms)", { exact: true })).toBeVisible();
       await expect(page.getByRole("alert")).toHaveCount(0);
       expect(errors).toEqual([]);
       await page.getByRole("button", { name: "Close", exact: true }).click();

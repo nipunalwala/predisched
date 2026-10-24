@@ -204,6 +204,18 @@ most of it, and the page is a single-screen app on a LAN, so it is not split.
 
 ## Tab audit (2026-10-24)
 
+### Dashboard clarity improvements
+
+- Overview offers an inline workload form (1–500 tasks) and a 20-task mixed sample when healthy and idle. Both use the existing authenticated burst API; paused queues and unavailable primaries/workers disable submission. Refusals are shown explicitly.
+- The top bar separates event-stream connectivity from cluster status. Reachability, non-draining healthy workers and snapshot age are reported independently. Snapshots over 10 seconds old show stale status. Prediction configuration is distinguished from a reported model response; an enabled strategy does not guarantee predictions are currently serving.
+- Task rows open the scheduling explanation first, with a selected-worker summary for predicted execution, queue delay and overload risk. Missing estimates remain dashes; recorded fallback reasons remain visible even without a candidate breakdown.
+- Benchmark comparisons select a scenario and reactive baseline within one suite. Metrics are arithmetic means of run metrics, alongside sample standard deviation (SD), metric-specific run counts and submitted-task counts. SD is descriptive variability, not a confidence interval; a single run has no variation estimate. Mean P95 is not a pooled task percentile. Archived results remain explicitly historical.
+- Demo mode first checks for an idle, unpaused cluster with a primary, at least two schedulers, all known schedulers reachable, and healthy non-draining workers. Start explicitly runs the four actions. Recovery waits for a different primary, final queue drain is bounded, errors stop the sequence and the final summary reports cluster-wide counter changes without attributing concurrent tasks to the demo.
+- To repeat a demo, expand **Restore nodes before another run**, copy the displayed Docker Compose command, run it from the repository on the Docker host, and choose **Recheck readiness**. The browser does not restart host containers. Drained workers require a container restart; CPU injection expires after 20 seconds. Closing or stopping prevents future actions but does not cancel work already accepted.
+- Simulator and task fields use readable labels and explicit units. Time axes bound label density on both desktop and mobile.
+
+`src/test/{workload,status,benchmarks,demo,format}.test.*` covers submission/refusal, degraded and stale status, per-run variation, readiness/recovery and missing measurements. `e2e/clarity.spec.ts` exercises the real workload form, comparison controls and demo readiness; `DEMO=1` enables the full failover test in `e2e/screenshots.spec.ts`.
+
 `e2e/tabs.spec.ts` visits all seven tabs against the running Docker stack, checks the live
 connection, fails on API or rendering errors, opens a task's details, verifies all three model
 registry rows, and runs both reactive and predictive benchmark simulations. All seven checks passed. The benchmark page

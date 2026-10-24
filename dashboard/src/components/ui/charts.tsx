@@ -61,3 +61,11 @@ export function markerLines(markers: Marker[]) {
 }
 
 export const timeTick = (t: number) => new Date(t).toLocaleTimeString([], { hour12: false });
+
+// Bound tick density at every viewport; tooltips retain the full timestamp.
+export const TIME_AXIS = { tickCount: 5, minTickGap: 36, interval: "preserveStartEnd" as const };
+export function timeTicks(start: number, end: number): number[] {
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return [];
+  if (start === end) return [start];
+  return Array.from({ length: 5 }, (_, i) => start + (end - start) * i / 4);
+}

@@ -2,7 +2,7 @@ import { memo } from "react";
 import { Area, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Row } from "../api/types";
 import type { Marker } from "../stream/store";
-import { markerLines, timeTick } from "./ui/charts";
+import { markerLines, timeTick, timeTicks, TIME_AXIS } from "./ui/charts";
 
 /**
  * Actual queued tasks vs the M2 forecast (spec §15.2): the forecast line runs ahead of the
@@ -28,7 +28,7 @@ function QueueChartChart({ actual, predicted, markers }: {
         <ComposedChart data={data} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid vertical={false} />
           <XAxis dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]}
-            tickFormatter={timeTick} fontSize={11} />
+            {...TIME_AXIS} ticks={timeTicks(lo, data[data.length - 1]?.t ?? lo)} tickFormatter={timeTick} fontSize={11} />
           <YAxis allowDecimals={false} fontSize={11} width={36} />
           <Tooltip labelFormatter={(t) => timeTick(Number(t))}
             contentStyle={{ background: "var(--panel)", border: "1px solid var(--rule)" }} />

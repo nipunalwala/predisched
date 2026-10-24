@@ -48,7 +48,7 @@ export function TopBar({ overview, onDemo }: { overview?: Overview; onDemo: () =
         <span>Strategy: <b data-testid="strategy">{c?.strategy?.toUpperCase() ?? "–"}</b></span>
         <span>Model: <b>{c?.modelVersions ? c.modelVersions.split(",")[0].replace("m1=", "M1 ") : "–"}</b></span>
         {!c && overview?.clusterError && <span style={{ color: "var(--bad)" }}>cluster: {overview.clusterError}</span>}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex max-w-full flex-wrap items-center gap-2">
           <select aria-label="time range" className="h-8 rounded border border-rule bg-panel px-2"
             value={range} onChange={(e) => setRange(e.target.value as Range)}>
             {["1m", "5m", "15m", "all"].map((r) => <option key={r} value={r}>{r === "all" ? "whole run" : `last ${r}`}</option>)}

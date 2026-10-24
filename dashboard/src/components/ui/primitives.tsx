@@ -16,7 +16,7 @@ export function Card({ title, action, className, children }: {
   return (
     <section className={cn("rounded-lg border border-rule bg-panel p-4 shadow-sm", className)}>
       {(title || action) && (
-        <header className="mb-3 flex items-center justify-between gap-2">
+        <header className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <h2 className="text-sm font-semibold text-ink">{title}</h2>
           {action}
         </header>

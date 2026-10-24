@@ -32,7 +32,7 @@ export function BenchmarkComparison({ cells }: { cells: SuiteCell[] }) {
       <p className="mb-3 text-sm text-muted">Same suite and scenario. Each value is the mean across runs; SD describes observed run-to-run variation, not a confidence interval. Run P95 values are averaged, not pooled task percentiles.</p>
       <div className="overflow-x-auto"><table className="tabular w-full min-w-[660px] text-sm" data-testid="benchmark-comparison">
         <caption className="sr-only">Predictive versus baseline measurements</caption>
-        <thead className="text-left text-xs text-muted"><tr><th className="py-2">Metric</th><th>Predictive</th><th>{STRATEGY_LABELS[selectedBaseline] ?? selectedBaseline}</th><th>Predictive change</th></tr></thead>
+        <thead className="text-left text-xs text-muted"><tr><th scope="col" className="py-2">Metric</th><th scope="col">Predictive</th><th scope="col">{STRATEGY_LABELS[selectedBaseline] ?? selectedBaseline}</th><th scope="col">Predictive change</th></tr></thead>
         <tbody>{METRICS.map(([key, label, lower]) => {
           const p = predictive.metrics[key], b = base.metrics[key];
           const delta = p != null && b != null && b !== 0 ? 100 * (p - b) / Math.abs(b) : null;

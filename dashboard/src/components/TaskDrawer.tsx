@@ -2,6 +2,7 @@ import { useTask } from "../api/hooks";
 import type { Candidate } from "../api/types";
 import { Explainer, fromBreakdown } from "./Explainer";
 import { Dialog, Guard } from "./ui/primitives";
+import { metricLabel } from "../format";
 
 /** Slide-over task detail (spec §15.4): lifecycle, Lamport times, retries, the decision explainer. */
 export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose: () => void }) {
@@ -26,7 +27,7 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
                 {["type", "input", "status", "priority", "worker_id", "attempts", "exec_time_ms",
                   "strategy", "trace_id", "result"].map((k) => (
                   <div key={k} className="contents">
-                    <dt className="text-muted">{k}</dt>
+                    <dt className="text-muted">{metricLabel(k)}</dt>
                     <dd className="truncate">{String(d.task[k] ?? "–")}</dd>
                   </div>
                 ))}

@@ -46,11 +46,20 @@ export function Topology({ cluster }: { cluster: ClusterSnapshot }) {
       animated: w.activeThreads > 0, style: { stroke: workerColor(w.workerId) } });
   });
   return (
-    <div className="h-72 w-full" data-testid="topology">
+    <div data-testid="topology">
+      <div className="space-y-3 text-sm sm:hidden">
+        <p className="rounded border border-rule bg-surface p-3 font-medium">Client → {cluster.leaderId != null ? `Scheduler ${cluster.leaderId} (primary)` : "Waiting for a primary"}</p>
+        <ul className="divide-y divide-rule rounded border border-rule px-3">
+          {cluster.workers.map((w) => <li key={w.workerId} className="flex justify-between gap-2 py-3"><b>{w.workerId}</b><span>{!w.healthy ? "Unavailable" : w.draining ? "Draining" : `${w.activeThreads}/${w.poolSize} busy · queue ${w.queueLen}`}</span></li>)}
+        </ul>
+        <p className="text-xs text-muted">Schedulers: {schedulers.map((s) => `${s.id} ${s.reachable ? "reachable" : "unreachable"}`).join(" · ")}</p>
+      </div>
+      <div className="hidden h-72 w-full sm:block">
       <ReactFlow nodes={nodes} edges={edges} fitView nodesDraggable={false} nodesConnectable={false}
         zoomOnScroll={false} panOnDrag={false} proOptions={{ hideAttribution: true }}>
         <Background gap={24} color="var(--grid)" />
       </ReactFlow>
+      </div>
     </div>
   );
 }
