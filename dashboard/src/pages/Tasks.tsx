@@ -38,6 +38,7 @@ export function TasksPage() {
             {TYPES.map((s) => <option key={s} value={s}>{s || "any type"}</option>)}
           </select>
         </div>}>
+        <p className="mb-3 text-sm text-muted">Select a task to see why its worker was chosen, predicted execution, queue delay and overload risk.</p>
         <Guard query={tasks} empty={(t) => !t.tasks.length}>
           {(t) => <TaskTable tasks={t.tasks} onOpen={setOpen} />}
         </Guard>

@@ -32,9 +32,10 @@ export function Explainer({ candidates, strategy, fallbackReason }: {
   candidates: Candidate[]; strategy?: string; fallbackReason?: string;
 }) {
   if (!candidates.length) {
-    return <p className="text-sm text-muted">No per-worker breakdown for this decision.</p>;
+    return <div>{fallbackReason && <p style={{ color: "var(--warn)" }}>Fallback: {fallbackReason}</p>}<p className="text-sm text-muted">No per-worker breakdown for this decision.</p></div>;
   }
   const predicted = candidates.some((c) => c.predictedExecMs !== null && Number.isFinite(c.predictedExecMs));
+  const chosen = candidates.find((c) => c.chosen);
   const data = candidates.map((c) => ({
     name: `${c.chosen ? "★ " : ""}${c.workerId}`,
     wait: c.predictedWaitMs ?? 0,
@@ -45,6 +46,15 @@ export function Explainer({ candidates, strategy, fallbackReason }: {
   }));
   return (
     <div data-testid="explainer">
+      {chosen && <section className="mb-4 rounded border border-rule bg-surface p-3" data-testid="decision-summary">
+        <h4 className="font-semibold">Selected worker: {chosen.workerId}</h4>
+        <p className="mt-1 text-xs text-muted">{strategy === "predictive" && !fallbackReason ? "Prediction-based placement; values estimated at scheduling time." : "Reactive placement; prediction estimates may be unavailable."}</p>
+        <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div><dt className="text-xs text-muted">Predicted execution</dt><dd>{num(chosen.predictedExecMs)}{chosen.predictedExecMs != null ? " ms" : ""}</dd></div>
+          <div><dt className="text-xs text-muted">Queue delay</dt><dd>{num(chosen.predictedWaitMs)}{chosen.predictedWaitMs != null ? " ms" : ""}</dd></div>
+          <div><dt className="text-xs text-muted">Overload risk</dt><dd>{chosen.overloadProb == null ? "–" : `${(chosen.overloadProb * 100).toFixed(1)}%`}</dd></div>
+        </dl>
+      </section>}
       {fallbackReason && (
         <p className="mb-2 text-sm" style={{ color: "var(--warn)" }}>Fallback: {fallbackReason}</p>
       )}
@@ -69,9 +79,9 @@ export function Explainer({ candidates, strategy, fallbackReason }: {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <table className="tabular mt-2 w-full text-xs">
+      <div className="overflow-x-auto"><table className="tabular mt-2 w-full min-w-[510px] text-xs">
         <thead className="text-muted">
-          <tr><th className="text-left">Worker</th><th>Queue</th><th>Wait</th><th>Exec</th><th>Overload</th><th>Cost</th><th className="text-left">Note</th></tr>
+          <tr><th className="text-left">Worker</th><th>Queue</th><th>Wait (ms)</th><th>Exec (ms)</th><th>Overload</th><th>{predicted ? "Cost (ms)" : "Score"}</th><th className="text-left">Note</th></tr>
         </thead>
         <tbody>
           {candidates.map((c) => (
@@ -80,13 +90,13 @@ export function Explainer({ candidates, strategy, fallbackReason }: {
               <td className="text-center">{num(c.predQueueLen, 2)}</td>
               <td className="text-center">{num(c.predictedWaitMs)}</td>
               <td className="text-center">{num(c.predictedExecMs)}</td>
-              <td className="text-center">{num(c.overloadProb, 2)}</td>
+              <td className="text-center">{c.overloadProb == null ? "–" : `${(c.overloadProb * 100).toFixed(1)}%`}</td>
               <td className="text-center">{num(c.cost ?? c.score)}</td>
               <td>{c.skipped ? `skipped: ${c.skipReason}` : c.coldStart ? "cold start" : c.chosen ? "chosen" : ""}</td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </div>
   );
 }

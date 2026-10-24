@@ -16,6 +16,12 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
             ? live.candidates : fromBreakdown(last?.breakdown);
           return (
             <div className="space-y-5 text-sm">
+              <section>
+                <h3 className="mb-2 font-semibold">Scheduling decision · Why {String(last?.chosen_worker ?? live?.chosenWorker ?? d.task.worker_id ?? "this worker")}?</h3>
+                {last || live ? <Explainer candidates={candidates} strategy={String(last?.strategy ?? live?.strategy ?? "")}
+                  fallbackReason={last?.fallback ? String(last.fallback_reason || "Reason not recorded") : live?.fallback ? live.fallbackReason || "Reason not recorded" : undefined} />
+                  : <p className="text-muted">No decision recorded for this task.</p>}
+              </section>
               <dl className="tabular grid grid-cols-2 gap-x-4 gap-y-1">
                 {["type", "input", "status", "priority", "worker_id", "attempts", "exec_time_ms",
                   "strategy", "trace_id", "result"].map((k) => (
@@ -25,15 +31,6 @@ export function TaskDrawer({ taskId, onClose }: { taskId: string | null; onClose
                   </div>
                 ))}
               </dl>
-              <section>
-                <h3 className="mb-2 font-semibold">Why {String(last?.chosen_worker ?? d.task.worker_id ?? "this worker")}?</h3>
-                {last || live ? (
-                  <Explainer candidates={candidates} strategy={String(last?.strategy ?? live?.strategy ?? "")}
-                    fallbackReason={last?.fallback ? String(last.fallback_reason) : live?.fallback ? live.fallbackReason : undefined} />
-                ) : (
-                  <p className="text-muted">No decision recorded for this task.</p>
-                )}
-              </section>
               <section>
                 <h3 className="mb-2 font-semibold">Lifecycle (Lamport order)</h3>
                 <ol className="space-y-1">
