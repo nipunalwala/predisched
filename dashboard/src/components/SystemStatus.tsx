@@ -9,7 +9,7 @@ export function SystemStatus({ overview }: { overview?: Overview }) {
   const stale = age === null || !Number.isFinite(age) || age > 10;
   const schedulers = c?.nodes.filter((n) => n.reachable).length ?? 0;
   const available = c?.workers.filter((w) => w.healthy && !w.draining).length ?? 0;
-  const healthy = c && c.leaderId != null && schedulers === c.nodes.length && schedulers > 0 && c.workers.length > 0 && c.workers.every((w) => w.healthy);
+  const healthy = c && c.leaderId != null && schedulers === c.nodes.length && schedulers > 0 && available > 0 && c.workers.every((w) => w.healthy);
   const label = !c ? "Cluster unavailable" : stale ? "Cluster data stale" : !healthy ? "Cluster degraded" : c.paused ? "Queue paused" : "Cluster healthy";
   return <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-rule px-4 py-2 text-xs" data-testid="system-status">
     <span className="font-semibold" style={{ color: !c ? "var(--bad)" : stale || !healthy || c.paused ? "var(--warn)" : "var(--good)" }}>{label}</span>

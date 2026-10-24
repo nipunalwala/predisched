@@ -98,7 +98,7 @@ export function DemoMode({ open, onClose, firstWorker }: { open: boolean; onClos
       setSnapshot(after); setNote(""); setPhase("done"); setStep(STEPS.length);
     } catch (e) {
       if (stopped()) return;
-      setNote(`Step failed: ${(e as Error).message}`); setSummary(`${submitted} tasks submitted before the failure. Restore nodes and recheck readiness before retrying.`); setPhase("failed");
+      setNote(`Step failed: ${(e as Error).message}`); setSummary(`${submitted} tasks acknowledged as submitted before the failure. A failed submission may have partially accepted tasks. Restore nodes and recheck readiness before retrying.`); setPhase("failed");
     }
   };
   if (!open) return null;

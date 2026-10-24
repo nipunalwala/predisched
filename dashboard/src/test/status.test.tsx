@@ -20,3 +20,8 @@ it("reports unavailable cluster data without zero healthy claims", () => {
   expect(screen.getByText("Cluster unavailable")).toBeInTheDocument();
   expect(screen.queryByText(/schedulers reachable/)).not.toBeInTheDocument();
 });
+it("shows degraded when all healthy workers are draining", () => {
+  render(<SystemStatus overview={{ ...snapshot, cluster: { ...snapshot.cluster!, nodes: [{ id: 5, address: "scheduler-5", leader: true, reachable: true }], workers: snapshot.cluster!.workers.map((w) => ({ ...w, draining: true })) } }} />);
+  expect(screen.getByText("Cluster degraded")).toBeInTheDocument();
+  expect(screen.getByText("0/2 workers available")).toBeInTheDocument();
+});

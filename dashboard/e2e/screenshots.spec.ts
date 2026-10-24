@@ -89,4 +89,7 @@ test("demo mode runs its four steps once", async ({ page }) => {
   expect(actions).toEqual(["/api/chaos/burst", "/api/chaos/kill-primary",
     "/api/chaos/cpu", "/api/chaos/burst"]);
   await page.screenshot({ path: "test-results/dashboard-demo-complete.png" });
+  await page.getByRole("button", { name: "Recheck readiness", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Start demo" })).toBeDisabled();
+  await expect(caption).toContainText("Restore all schedulers before another failover demo", { timeout: 15_000 });
 });

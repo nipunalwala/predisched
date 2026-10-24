@@ -12,3 +12,12 @@ Commit the completed landing page first, then one commit per improvement. No pus
 - [x] 6. Shared human-readable metric labels/units and bounded time-axis labels.
 
 Use real existing APIs; do not fabricate live data, confidence intervals, completed-task attribution or prediction availability. Distinguish historical measurements and simulator results. Verify each change with focused behavioural tests, full unit suite, lint and build before committing. Finish with live browser checks of all tabs and desktop/mobile captures of changed surfaces.
+
+## Verification
+
+- Frontend: 29 unit tests passed; lint and production build passed.
+- API: 17 controller and 2 stream tests passed. Reachability regression failed before the fix and passed after it.
+- Final live browser run: 13 checks passed, covering landing routes, workload submission, numeric benchmark comparison against the API, demo readiness, the full four-step failover demo and all seven tabs.
+- The full demo confirmed a crashed scheduler is shown as unreachable and blocks another run until restored. The displayed host recovery command was exercised after the demo.
+- Desktop/mobile captures reviewed in two bounded passes; controls wrap and mobile topology uses readable live rows. Independent code review findings resolved.
+- Six improvements committed separately after the landing page; final corrective commit includes genuine RPC reachability and the all-draining worker regression.

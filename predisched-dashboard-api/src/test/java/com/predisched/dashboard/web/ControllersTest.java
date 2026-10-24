@@ -300,6 +300,22 @@ class ControllersTest {
     }
 
     @Test
+    void overviewUsesProbedReachabilityInsteadOfConfiguredPeerFlags() throws Exception {
+        when(repo.kpis(60)).thenReturn(Map.of("completed", 0, "with_deadline", 0, "sla_met", 0));
+        ClusterState configured = state().toBuilder()
+                .addNodes(com.predisched.proto.NodeState.newBuilder().setId(1)
+                        .setAddress("a:1").setLeader(true).setReachable(true))
+                .addNodes(com.predisched.proto.NodeState.newBuilder().setId(2)
+                        .setAddress("b:2").setReachable(true)).build();
+        when(cluster.state()).thenReturn(configured);
+        when(cluster.allStates()).thenReturn(Map.of("a:1", configured));
+        mvc.perform(get("/api/overview"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cluster.nodes[0].reachable").value(true))
+                .andExpect(jsonPath("$.cluster.nodes[1].reachable").value(false));
+    }
+
+    @Test
     void clusterTroubleIs503() throws Exception {
         when(cluster.state()).thenThrow(new ClusterUnavailableException("no primary among [x]"));
         when(repo.workersLatest()).thenReturn(List.of());
