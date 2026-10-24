@@ -6,6 +6,7 @@ import type { Overview } from "../api/types";
 import { useApp, type Range } from "../AppContext";
 import { THEMES, type Theme } from "../theme/palette";
 import { Button } from "./ui/primitives";
+import { SystemStatus } from "./SystemStatus";
 
 export const PAGES = [
   { path: "/dashboard", label: "Overview" },
@@ -38,9 +39,10 @@ export function TopBar({ overview, onDemo }: { overview?: Overview; onDemo: () =
     <header className="sticky top-0 z-30 border-b border-rule bg-panel">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2 text-sm">
         <Link to="/" aria-label="PrediSched home" className="text-base font-bold tracking-tight">PrediSched</Link>
-        <span className="flex items-center gap-1.5" data-testid="connection" title="live stream">
+        <span className="flex items-center gap-1.5" data-testid="connection" title="Event stream connection; cluster health is reported separately">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: dot }} />
           <span className="font-medium">{label}</span>
+          <span className="text-xs text-muted">{status === "live" ? "Live updates connected" : "Live updates disconnected"}</span>
         </span>
         <span>Leader: <b data-testid="leader">{c?.leaderId ? `S${c.leaderId}` : c ? c.answeredBy : "–"}</b></span>
         <span>Strategy: <b data-testid="strategy">{c?.strategy?.toUpperCase() ?? "–"}</b></span>
@@ -64,6 +66,7 @@ export function TopBar({ overview, onDemo }: { overview?: Overview; onDemo: () =
           </Button>
         </div>
       </div>
+      <SystemStatus overview={overview} />
       <nav className="flex gap-1 overflow-x-auto px-3" aria-label="pages">
         {PAGES.map((p, i) => (
           <NavLink key={p.path} to={p.path} end
