@@ -10,18 +10,21 @@ export interface SuiteCell {
   strategy: string;
   n: number;
   metrics: Record<string, number>;
+  stats: Record<string, { n: number; sd: number | null }>;
+  taskCount: number | null;
 }
 
 /** benchmark_runs rows of one suite as mean metrics per scenario × strategy. */
 export function suiteCells(runs: Row[], suite: string): SuiteCell[] {
-  const cells = new Map<string, { scenario: string; strategy: string; values: Record<string, number[]> }>();
+  const cells = new Map<string, { scenario: string; strategy: string; n: number; values: Record<string, number[]> }>();
   for (const r of runs) {
     const [, s, scenario] = String(r.scenario).split(":");
     if (s !== suite) continue;
     let m: Record<string, unknown> = {};
     try { m = JSON.parse(String(r.metrics)); } catch { continue; }
     const key = `${scenario}|${r.strategy}`;
-    const cell = cells.get(key) ?? { scenario, strategy: String(r.strategy), values: {} };
+    const cell = cells.get(key) ?? { scenario, strategy: String(r.strategy), n: 0, values: {} };
+    cell.n++;
     for (const [k, v] of Object.entries(m)) {
       if (typeof v === "number" && Number.isFinite(v)) (cell.values[k] ??= []).push(v);
     }
@@ -30,7 +33,12 @@ export function suiteCells(runs: Row[], suite: string): SuiteCell[] {
   return [...cells.values()].map((c) => ({
     scenario: c.scenario,
     strategy: c.strategy,
-    n: Math.max(0, ...Object.values(c.values).map((v) => v.length)),
+    n: c.n,
+    taskCount: c.values.tasks?.reduce((a, b) => a + b, 0) ?? null,
+    stats: Object.fromEntries(Object.entries(c.values).map(([k, v]) => {
+      const mean = v.reduce((a, b) => a + b, 0) / v.length;
+      return [k, { n: v.length, sd: v.length > 1 ? Math.sqrt(v.reduce((s, x) => s + (x - mean) ** 2, 0) / (v.length - 1)) : null }];
+    })),
     metrics: Object.fromEntries(Object.entries(c.values).map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length])),
   }));
 }

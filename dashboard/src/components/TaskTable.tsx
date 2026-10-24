@@ -26,10 +26,10 @@ export function TaskTable({ tasks, onOpen }: { tasks: Row[]; onOpen: (id: string
           {rows.getVirtualItems().map((v) => {
             const t = tasks[v.index];
             return (
-              <button key={t.task_id} onClick={() => onOpen(String(t.task_id))}
+              <button key={t.task_id} onClick={() => onOpen(String(t.task_id))} aria-label={`Explain decision for task ${t.task_id}`}
                 className={`${COLUMNS} absolute left-0 w-full items-center border-b border-rule px-2 text-left hover:bg-surface`}
                 style={{ height: v.size, transform: `translateY(${v.start}px)` }}>
-                <span className="truncate font-mono text-xs">{t.task_id}</span>
+                <span className="truncate font-mono text-xs text-accent" title="Open task and scheduling decision">{t.task_id}</span>
                 <span className="truncate">{String(t.type).replace("_TASK", "")}</span>
                 <span className="tabular">{t.priority}</span>
                 <span className="flex items-center gap-1.5">

@@ -1,14 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Pause, Play, PlayCircle } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { postJson } from "../api/client";
 import type { Overview } from "../api/types";
 import { useApp, type Range } from "../AppContext";
 import { THEMES, type Theme } from "../theme/palette";
 import { Button } from "./ui/primitives";
+import { SystemStatus } from "./SystemStatus";
 
 export const PAGES = [
-  { path: "/", label: "Overview" },
+  { path: "/dashboard", label: "Overview" },
   { path: "/cluster", label: "Cluster" },
   { path: "/tasks", label: "Tasks" },
   { path: "/predictions", label: "Predictions" },
@@ -37,16 +38,17 @@ export function TopBar({ overview, onDemo }: { overview?: Overview; onDemo: () =
   return (
     <header className="sticky top-0 z-30 border-b border-rule bg-panel">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2 text-sm">
-        <span className="text-base font-bold tracking-tight">PrediSched</span>
-        <span className="flex items-center gap-1.5" data-testid="connection" title="live stream">
+        <Link to="/" aria-label="PrediSched home" className="text-base font-bold tracking-tight">PrediSched</Link>
+        <span className="flex items-center gap-1.5" data-testid="connection" title="Event stream connection; cluster health is reported separately">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: dot }} />
           <span className="font-medium">{label}</span>
+          <span className="text-xs text-muted">{status === "live" ? "Live updates connected" : "Live updates disconnected"}</span>
         </span>
         <span>Leader: <b data-testid="leader">{c?.leaderId ? `S${c.leaderId}` : c ? c.answeredBy : "–"}</b></span>
         <span>Strategy: <b data-testid="strategy">{c?.strategy?.toUpperCase() ?? "–"}</b></span>
         <span>Model: <b>{c?.modelVersions ? c.modelVersions.split(",")[0].replace("m1=", "M1 ") : "–"}</b></span>
         {!c && overview?.clusterError && <span style={{ color: "var(--bad)" }}>cluster: {overview.clusterError}</span>}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex max-w-full flex-wrap items-center gap-2">
           <select aria-label="time range" className="h-8 rounded border border-rule bg-panel px-2"
             value={range} onChange={(e) => setRange(e.target.value as Range)}>
             {["1m", "5m", "15m", "all"].map((r) => <option key={r} value={r}>{r === "all" ? "whole run" : `last ${r}`}</option>)}
@@ -64,6 +66,7 @@ export function TopBar({ overview, onDemo }: { overview?: Overview; onDemo: () =
           </Button>
         </div>
       </div>
+      <SystemStatus overview={overview} />
       <nav className="flex gap-1 overflow-x-auto px-3" aria-label="pages">
         {PAGES.map((p, i) => (
           <NavLink key={p.path} to={p.path} end

@@ -37,7 +37,8 @@ scripts/demo.sh
 ```
 
 The demo walks through the ten lab topics on the running system; it pauses after each step. Then
-open the dashboard at http://localhost:5173 (API docs at http://localhost:8080/swagger-ui).
+open http://localhost:5173 for the introduction, then use **Open dashboard** to reach
+http://localhost:5173/dashboard (API docs at http://localhost:8080/swagger-ui).
 
 **Native** (Java 17, Maven 3.9, Python 3.10+ with `pip install -r ml/requirements.txt`, and
 PostgreSQL 16 on 5432):

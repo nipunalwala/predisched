@@ -73,8 +73,10 @@ test("demo mode runs its four steps once", async ({ page }) => {
     actions.push("/api/chaos/" + response.url().split("/api/chaos/")[1].split("?")[0]);
     if (!response.ok()) failures.push(`${response.status()} ${await response.text()}`);
   });
-  await page.goto("/");
+  await page.goto("/dashboard");
   await page.getByRole("button", { name: "Demo" }).click();
+  await expect(page.getByRole("button", { name: "Start demo" })).toBeEnabled({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Start demo" }).click();
   const caption = page.getByTestId("demo-caption");
   await expect(caption).toContainText("1/4", { timeout: 10_000 });
   await expect(caption).toContainText("2/4", { timeout: 90_000 });
@@ -87,4 +89,7 @@ test("demo mode runs its four steps once", async ({ page }) => {
   expect(actions).toEqual(["/api/chaos/burst", "/api/chaos/kill-primary",
     "/api/chaos/cpu", "/api/chaos/burst"]);
   await page.screenshot({ path: "test-results/dashboard-demo-complete.png" });
+  await page.getByRole("button", { name: "Recheck readiness", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Start demo" })).toBeDisabled();
+  await expect(caption).toContainText("Restore all schedulers before another failover demo", { timeout: 15_000 });
 });

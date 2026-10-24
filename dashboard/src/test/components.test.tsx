@@ -1,9 +1,10 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import type { Overview } from "../api/types";
 import { Explainer, fromBreakdown } from "../components/Explainer";
 import { KpiStrip } from "../components/KpiStrip";
 import { WorkerCard } from "../components/WorkerCard";
+afterEach(cleanup);
 
 // Fixture API responses in the shapes the dashboard API returns (docs/components/dashboard-api.md).
 const overview: Overview = {
@@ -82,6 +83,19 @@ describe("Explainer", () => {
     expect(fromBreakdown(null)).toEqual([]);
     render(<Explainer candidates={[]} />);
     expect(screen.getByText("No per-worker breakdown for this decision.")).toBeInTheDocument();
+  });
+
+  it("surfaces the selected worker prediction and overload risk before the chart", () => {
+    render(<Explainer candidates={fromBreakdown(breakdown)} strategy="predictive" />);
+    expect(screen.getByTestId("decision-summary")).toHaveTextContent("Selected worker: worker-2");
+    expect(screen.getByTestId("decision-summary")).toHaveTextContent("Predicted execution29.1 ms");
+    expect(screen.getByTestId("decision-summary")).toHaveTextContent("Queue delay0.0 ms");
+    expect(screen.getByTestId("decision-summary")).toHaveTextContent("Overload risk0.0%");
+  });
+
+  it("retains the fallback reason even without candidate details", () => {
+    render(<Explainer candidates={[]} fallbackReason="prediction timed out" />);
+    expect(screen.getByText("Fallback: prediction timed out")).toBeInTheDocument();
   });
 });
 

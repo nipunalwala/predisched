@@ -6,7 +6,7 @@ import {
 import type { Row } from "../api/types";
 import type { Marker } from "../stream/store";
 import { SERIES } from "../theme/palette";
-import { markerLines, timeTick } from "./ui/charts";
+import { markerLines, timeTick, timeTicks, TIME_AXIS } from "./ui/charts";
 
 /**
  * Each executor's resource profile (the worker's *TaskExecutor.profile()). Thirteen task types are
@@ -28,12 +28,12 @@ function PointTip({ active, payload }: { active?: boolean; payload?: { payload?:
   return (
     <div className="rounded border border-rule bg-panel px-2 py-1 text-xs tabular">
       <div className="font-semibold">{p.type}</div>
-      <div>actual {Number(p.actual).toFixed(0)} ms � predicted {Number(p.predicted).toFixed(0)} ms</div>
+      <div>actual {Number(p.actual).toFixed(0)} ms · predicted {Number(p.predicted).toFixed(0)} ms</div>
     </div>
   );
 }
 
-/** Every completed task, predicted vs actual on log axes, with the y = x line (spec �15.5). */
+/** Every completed task, predicted vs actual on log axes, with the y = x line (spec §15.5). */
 function PredVsActualChart({ rows }: { rows: Row[] }) {
   const max = Math.max(10, ...rows.map((r) => Math.max(Number(r.pred_exec_ms), Number(r.actual_exec_ms))));
   const point = (r: Row) => ({ type: String(r.task_type).replace("_TASK", ""),
@@ -61,7 +61,7 @@ function PredVsActualChart({ rows }: { rows: Row[] }) {
   );
 }
 
-/** Rolling MAE over time with the drift threshold (1.5 × test MAE) drawn in. */
+/** Rolling MAE over time with the drift threshold (1.5 Ã— test MAE) drawn in. */
 function MaeOverTimeChart({ rows, testMae, markers }: { rows: Row[]; testMae: number | null; markers: Marker[] }) {
   const data = [...rows].reverse().map((r) => ({ t: new Date(r.ts).getTime(), mae: Number(r.rolling_mae_ms) }));
   const lo = data.length ? data[0].t : 0;
@@ -70,7 +70,7 @@ function MaeOverTimeChart({ rows, testMae, markers }: { rows: Row[]; testMae: nu
       <ResponsiveContainer>
         <LineChart data={data} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid vertical={false} />
-          <XAxis dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]} tickFormatter={timeTick} fontSize={11} />
+          <XAxis {...TIME_AXIS} ticks={timeTicks(lo, data[data.length - 1]?.t ?? lo)} dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]} tickFormatter={timeTick} fontSize={11} />
           <YAxis unit=" ms" fontSize={11} width={60} />
           <Tooltip labelFormatter={(t) => timeTick(Number(t))}
             contentStyle={{ background: "var(--panel)", border: "1px solid var(--rule)" }} />

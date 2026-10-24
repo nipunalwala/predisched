@@ -7,7 +7,7 @@ import {
 import type { Row } from "../api/types";
 import type { Marker, MetricsPoint } from "../stream/store";
 import { workerColor } from "../theme/palette";
-import { markerLines, timeTick } from "./ui/charts";
+import { markerLines, timeTick, timeTicks, TIME_AXIS } from "./ui/charts";
 
 /** Who led, over time (spec §15.3): a step line from polls, elections as markers. */
 export function ElectionTimeline({ history, markers }: { history: { t: number; leader: number | null }[]; markers: Marker[] }) {
@@ -18,7 +18,7 @@ export function ElectionTimeline({ history, markers }: { history: { t: number; l
       <ResponsiveContainer>
         <LineChart data={data} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid vertical={false} />
-          <XAxis dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]} tickFormatter={timeTick} fontSize={11} />
+          <XAxis {...TIME_AXIS} ticks={timeTicks(lo, data[data.length - 1]?.t ?? lo)} dataKey="t" type="number" scale="time" domain={["dataMin", "dataMax"]} tickFormatter={timeTick} fontSize={11} />
           <YAxis allowDecimals={false} domain={[0, 5]} fontSize={11} width={28}
             label={{ value: "leader", angle: -90, position: "insideLeft", fill: "var(--muted)", fontSize: 11 }} />
           <Tooltip labelFormatter={(t) => timeTick(Number(t))}
@@ -56,7 +56,7 @@ export function LoadHeatmap({ metrics }: { metrics: MetricsPoint[] }) {
     svg.append("g").attr("transform", "translate(88,0)").call(d3.axisLeft(y).tickSize(0))
       .call((g) => g.select(".domain").remove()).selectAll("text").attr("fill", "var(--muted)");
     svg.append("g").attr("transform", `translate(0,${height - 22})`)
-      .call(d3.axisBottom(x).ticks(6).tickFormat((d) => timeTick(Number(d))))
+      .call(d3.axisBottom(x).ticks(Math.max(2, Math.floor((width - 100) / 100))).tickFormat((d) => timeTick(Number(d))))
       .selectAll("text").attr("fill", "var(--muted)");
   }, [metrics]);
   return <svg ref={ref} className="w-full" role="img" aria-label="worker load heatmap" data-testid="heatmap" />;
@@ -88,7 +88,7 @@ export function Gantt({ tasks }: { tasks: Row[] }) {
     svg.append("g").attr("transform", "translate(88,0)").call(d3.axisLeft(y).tickSize(0))
       .call((g) => g.select(".domain").remove()).selectAll("text").attr("fill", "var(--muted)");
     svg.append("g").attr("transform", `translate(0,${height - 22})`)
-      .call(d3.axisBottom(x).ticks(6).tickFormat((d) => timeTick(Number(d))))
+      .call(d3.axisBottom(x).ticks(Math.max(2, Math.floor((width - 100) / 100))).tickFormat((d) => timeTick(Number(d))))
       .selectAll("text").attr("fill", "var(--muted)");
   }, [tasks]);
   return <svg ref={ref} className="w-full" role="img" aria-label="task timeline" data-testid="gantt" />;

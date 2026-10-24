@@ -3,7 +3,9 @@ import { API_URL, postJson } from "../api/client";
 import { useBenchmarks } from "../api/hooks";
 import type { Row } from "../api/types";
 import { StrategyBars, StrategyRadar, suiteCells } from "../components/BenchmarkCharts";
+import { BenchmarkComparison } from "../components/BenchmarkComparison";
 import { Button, Card, Guard, PanelState } from "../components/ui/primitives";
+import { metricLabel, metricValue } from "../format";
 
 const METRICS: [string, string][] = [
   ["mean_latency_ms", "Mean latency (ms)"],
@@ -38,7 +40,7 @@ export function BenchmarksPage() {
         Saved benchmark measurements from the archived suites below. These are historical results, not live cluster metrics.
       </p>}
       <Card title={`Strategy comparison${chosen ? ` · suite ${chosen}` : ""}`} action={
-        <div className="flex gap-2 text-sm">
+        <div className="flex max-w-full flex-wrap gap-2 text-sm">
           <select aria-label="suite" className="h-8 rounded border border-rule bg-panel px-2" value={chosen} onChange={(e) => setSuite(e.target.value)}>
             {suites.map((s) => <option key={String(s.suite)} value={String(s.suite)}>{String(s.suite)} ({s.runs} runs)</option>)}
           </select>
@@ -50,6 +52,7 @@ export function BenchmarksPage() {
           {() => <StrategyBars cells={cells} metric={metric} label={METRICS.find((m) => m[0] === metric)?.[1] ?? metric} />}
         </Guard>
       </Card>
+      <BenchmarkComparison key={chosen} cells={cells} />
       <div className="grid gap-4 xl:grid-cols-2">
         <Card title="Overall profile (normalised per scenario)">
           {cells.length ? <StrategyRadar cells={cells} /> : <PanelState kind="empty" />}
@@ -105,7 +108,7 @@ export function BenchmarksPage() {
           {sim?.metrics && (
             <dl className="tabular mt-3 grid grid-cols-2 gap-1 text-sm" data-testid="sim-result">
               {Object.entries(sim.metrics as Record<string, number>).map(([k, v]) => (
-                <div key={k} className="contents"><dt className="text-muted">{k}</dt><dd>{Number(v).toFixed(1)}</dd></div>
+                <div key={k} className="contents"><dt className="text-muted">{metricLabel(k)}</dt><dd>{metricValue(v)}</dd></div>
               ))}
             </dl>
           )}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Route, Routes, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { postJson, WS_URL } from "./api/client";
 import { useOverview } from "./api/hooks";
 import { AppContext, type Range } from "./AppContext";
@@ -10,6 +10,7 @@ import { BenchmarksPage } from "./pages/Benchmarks";
 import { ChaosPage } from "./pages/Chaos";
 import { ClusterPage } from "./pages/Cluster";
 import { LogsPage } from "./pages/Logs";
+import { LandingPage } from "./pages/Landing";
 import { OverviewPage } from "./pages/Overview";
 import { PredictionsPage } from "./pages/Predictions";
 import { TasksPage } from "./pages/Tasks";
@@ -30,6 +31,13 @@ function storedTheme(): Theme {
 }
 
 export function App() {
+  return <Routes>
+    <Route path="/" element={<LandingPage />} />
+    <Route path="/*" element={<DashboardApp />} />
+  </Routes>;
+}
+
+function DashboardApp() {
   const [range, setRange] = useState<Range>("5m");
   const [theme, setThemeState] = useState<Theme>(storedTheme);
   const [demo, setDemo] = useState(false);
@@ -71,13 +79,14 @@ export function App() {
         <TopBar overview={overview.data} onDemo={() => setDemo(true)} />
         <main className="mx-auto max-w-[1600px] p-4">
           <Routes>
-            <Route path="/" element={<OverviewPage />} />
+            <Route path="/dashboard" element={<OverviewPage />} />
             <Route path="/cluster" element={<ClusterPage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/predictions" element={<PredictionsPage />} />
             <Route path="/benchmarks" element={<BenchmarksPage />} />
             <Route path="/chaos" element={<ChaosPage />} />
             <Route path="/logs" element={<LogsPage />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
         <DemoMode open={demo} onClose={() => setDemo(false)}

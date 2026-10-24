@@ -45,7 +45,16 @@ public class OverviewController {
             kpis.put("queueDepth", state.getQueueDepth());
             kpis.put("activeWorkers", workers.stream().filter(WorkerEntry::getHealthy).count());
             out.put("kpis", kpis);
-            out.put("cluster", Protos.state(state));
+            // The scheduler's peer list is configuration: its reachable flags are always true.
+            // Use actual admin RPC responses, as the leader endpoint does, for dashboard health.
+            Map<String, ClusterState> reachable = cluster.allStates();
+            Map<String, Object> live = Protos.state(state);
+            live.put("nodes", state.getNodesList().stream().map(node -> {
+                Map<String, Object> view = Protos.node(node);
+                view.put("reachable", reachable.containsKey(node.getAddress()));
+                return view;
+            }).toList());
+            out.put("cluster", live);
         } catch (RuntimeException e) {
             kpis.put("queueDepth", null);
             kpis.put("activeWorkers", null);
