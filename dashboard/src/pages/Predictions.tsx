@@ -6,6 +6,7 @@ import type { Row } from "../api/types";
 import { RANGE_MINUTES, sinceMs, useApp } from "../AppContext";
 import { MaeOverTime, PredVsActual } from "../components/PredictionCharts";
 import { QueueChart } from "../components/QueueChart";
+import { FeatureImportance } from "../components/FeatureImportance";
 import { Button, Card, Guard, PanelState } from "../components/ui/primitives";
 import { useMarkers } from "../stream/store";
 
@@ -29,6 +30,7 @@ export function PredictionsPage() {
     const r = await postJson<Row>(`/api/models/${version}/promote?model=${model}`, undefined, true);
     setPromotion(String(r.output ?? (r.promoted ? "promoted" : "refused")));
     client.invalidateQueries({ queryKey: ["models"] });
+    client.invalidateQueries({ queryKey: ["feature-importance"] });
   };
 
   return (
@@ -69,8 +71,8 @@ export function PredictionsPage() {
           </Guard>
         </Card>
       </div>
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Card title="Model registry: live, shadow, retired" className="xl:col-span-2">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card title="Model registry: live, shadow, retired">
           <Guard query={models} empty={(m) => !Object.keys(m.models).length}>
             {(m) => (
               <div className="space-y-2" data-testid="registry">
@@ -98,8 +100,11 @@ export function PredictionsPage() {
             )}
           </Guard>
         </Card>
-        <Card title="Feature importance · overload risk heatmap">
-          <PanelState kind="notbuilt" message="Not built yet: see ml/reports/*-feature-importance.png (no API endpoint)" />
+        <FeatureImportance />
+      </div>
+      <div>
+        <Card title="Overload risk heatmap">
+          <PanelState kind="notbuilt" message="Aggregate overload history is unavailable; inspect a task's decision explanation for recorded per-worker risk." />
         </Card>
       </div>
     </div>

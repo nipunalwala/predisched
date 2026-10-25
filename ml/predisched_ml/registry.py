@@ -18,7 +18,9 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import math
 import sys
+import tempfile
 from pathlib import Path
 
 import joblib
@@ -27,6 +29,30 @@ from . import ML_DIR
 
 MODELS_DIR = ML_DIR / "models"
 STATUSES = ("live", "shadow", "retired")
+
+
+def export_feature_importance(obj, folder: Path) -> bool:
+    """Publish fitted numeric weights alongside their immutable model version, atomically."""
+    candidate = getattr(obj, "model", obj)
+    weights = candidate.importances()
+    if weights is None:
+        return False  # Baselines do not expose feature weights.
+    features = [{"feature": str(name), "importance": float(value)}
+                for name, value in weights.items() if math.isfinite(float(value)) and value >= 0]
+    report = {"method": "absolute_standardized_coefficient" if candidate.family == "linear"
+              else "model_feature_importance", "features": features}
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=folder,
+                                         suffix=".tmp", delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(report, stream, allow_nan=False)
+            stream.write("\n")
+        temporary.replace(folder / "feature-importance.json")
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return True
 
 
 def registry_path(root: Path = MODELS_DIR) -> Path:
@@ -84,6 +110,7 @@ def save(model: str, obj, meta: dict, root: Path = MODELS_DIR, live: bool = True
     folder = root / model / f"v{version}"
     folder.mkdir(parents=True, exist_ok=False)
     joblib.dump(obj, folder / "model.joblib")
+    export_feature_importance(obj, folder)
     meta.update(model=model, version=version)  # the caller's copy learns its version too
     (folder / "meta.json").write_text(json.dumps(meta, indent=2, default=str) + "\n",
                                       encoding="utf-8")

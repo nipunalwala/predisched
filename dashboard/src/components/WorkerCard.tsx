@@ -4,12 +4,14 @@ import { Badge } from "./ui/primitives";
 import { Ring } from "./ui/charts";
 
 /** One worker: CPU and memory rings, threads, queue, status (spec §15.3). */
-export function WorkerCard({ stored, live }: { stored: Row; live: WorkerLive | null }) {
+export function WorkerCard({ stored, live, liveAvailable = true }: {
+  stored: Row; live: WorkerLive | null; liveAvailable?: boolean;
+}) {
   const id = String(stored.worker_id ?? live?.workerId);
   const color = workerColor(id);
-  const status = !live ? "DEAD" : live.draining ? "DRAINING" : live.healthy ? "HEALTHY" : "STALE";
+  const status = !liveAvailable ? "UNKNOWN" : !live ? "DEAD" : live.draining ? "DRAINING" : live.healthy ? "HEALTHY" : "STALE";
   const statusColor = { HEALTHY: "var(--good)", DRAINING: "var(--warn)", STALE: "var(--warn)",
-    DEAD: "var(--bad)" }[status];
+    DEAD: "var(--bad)", UNKNOWN: "var(--muted)" }[status];
   const pool = live?.poolSize ?? stored.pool_size ?? 0;
   const active = live?.activeThreads ?? stored.active_threads ?? 0;
   return (
@@ -23,6 +25,7 @@ export function WorkerCard({ stored, live }: { stored: Row; live: WorkerLive | n
         </div>
         <Badge color={statusColor}>{status}</Badge>
       </header>
+      {!liveAvailable && <p className="mb-3 text-xs text-muted">Last recorded metrics</p>}
       <div className="flex items-center justify-around">
         <Ring value={Number(stored.cpu_pct ?? 0)} label="CPU" color={color} />
         <Ring value={Number(stored.mem_pct ?? 0)} label="Memory" color={color} />

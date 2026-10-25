@@ -86,8 +86,10 @@ java -jar predisched-client/target/predisched-client.jar --config configs/dashbo
 | | Queue forecast vs actual | `/api/queue/forecast` |
 | | Error by task type (n, MAE, cold starts) | `/api/predictions/accuracy` `byType` |
 | | Model registry: live / shadow / retired, test metric, Promote button for a shadow | `/api/models`; `POST /api/models/{v}/promote` |
+| | Interactive execution-model feature weights: top 15/all, hover details and exact-value table | `/api/models/m1/feature-importance`, follows the live registry version and refreshes every 10 s |
 | Benchmarks | Strategy comparison, grouped bars per scenario, metric selector | `/api/benchmarks` (the suite with ≥ 25 runs by default) |
 | | Overall profile radar (normalised per scenario) | `/api/benchmarks` |
+| | Latency CDF overlay by scenario, with strategy task/run counts | `/api/benchmarks/{suite}/latency-cdf`, refreshed every 30 s |
 | | Run history; links to the generated reports | `/api/benchmarks` `suites`, `reports` |
 | | What-if simulator (strategy, workers, trace; runs at 10×) | `POST /api/simulate` |
 | Chaos | Kill worker, kill primary, inject latency, spike CPU, partition, drain, submit burst; each opens a confirmation dialog | `POST /api/chaos/*` (admin key) |
@@ -153,9 +155,7 @@ Each shows a visible "Not built yet" state on its page, with where to look inste
 |---|---|---|---|
 | Workflow DAG (§15.4) | Tasks | The API has no workflow endpoint | `predisched workflow status <id>` |
 | Dead-letter queue (§15.4) | Tasks | The API has no dead-letter endpoint | `predisched dlq list` / `retry` |
-| Feature importance (§15.5) | Predictions | No endpoint serves it | `ml/reports/*-feature-importance.png` |
 | Overload risk heatmap per worker (§15.5) | Predictions | M3 probabilities are logged per decision, but the API has no aggregate | the explainer's overload column per decision |
-| Latency CDF overlay (§15.6) | Benchmarks | Needs per-task latencies; the API serves per-run summaries | the suite report (`results/benchmark/*/report.html`), linked from the page |
 
 ## Tests
 
@@ -224,3 +224,57 @@ connection, fails on API or rendering errors, opens a task's details, verifies a
 registry rows, and runs both reactive and predictive benchmark simulations. All seven checks passed. The benchmark page
 labels archive measurements as historical and links to the actual saved reports; simulator
 failures are shown in the page instead of becoming unhandled promise rejections.
+
+### Scheduler outage display (2026-10-25)
+
+During primary failover, `/api/workers` can return stored metrics with `live: null` and a
+`clusterError`. That means worker health cannot currently be checked through the primary;
+it does not mean every worker has died. The Cluster page now shows **UNKNOWN** and
+**Last recorded metrics** in this case, with a short reconnection status. Normal worker
+status returns on the next successful poll. A worker missing from a successful live snapshot
+still shows **DEAD**.
+
+The header no longer renders raw scheduler errors or internal addresses. The status strip
+uses an amber unavailable status and **Waiting for a scheduler connection.** Overview uses
+the same waiting message in its topology panel rather than a red error state. Stream
+connectivity remains independent of cluster health, and queue controls remain disabled
+without a cluster snapshot.
+
+Validation: `npm test` passed 34 tests; `npm run lint` and `npm run build` passed.
+`npx playwright test e2e/outage.spec.ts e2e/smoke.spec.ts --workers=1` passed all 8 checks
+against the rebuilt Docker dashboard. The outage check simulates unavailable snapshots,
+checks UNKNOWN labels and raw-error suppression on Cluster and Overview, then verifies
+recovery. Desktop and mobile captures were visually checked. The Playwright TypeScript
+configuration includes DOM types for browser callbacks such as `page.evaluate`.
+
+### Benchmark and model report panels (2026-10-25)
+
+The latency CDF placeholder now reads the selected suite's saved per-task CSVs through
+`/api/benchmarks/{suite}/latency-cdf`. Choose a scenario to overlay empirical step curves
+for each strategy. Each curve pools completed task latencies across that strategy's runs;
+duplicate latencies are combined, and invalid or negative values are excluded. Task and run
+counts are visible, and missing per-task files produce a partial-archive notice. Warm-up
+tasks are included, matching the report CDF; this differs from summary latency metrics that
+exclude warm-up. The query refreshes every 30 seconds. The s20 archive currently contains
+30,000 completed-task measurements across five scenarios. Initial loading from the Windows
+bind mount measured about eight seconds; the panel shows its loading state during that read.
+
+Feature importance is a Recharts horizontal bar chart backed by numeric weights from the
+registered live M1 version. Select the top 15 or all features, hover for names and values,
+and expand **View exact weights** for the full exported precision. Model saving atomically
+exports a `feature-importance.json` sidecar beside the fitted binary; prediction-server load
+also backfills existing live versions. The API reads the shared model volume through its
+existing read-only mount and follows registry promotions. It polls every 10 seconds and
+refreshes after promotion. Linear models expose absolute standardized coefficients; tree
+models expose their native feature importances. Missing weights use an explanatory empty
+state. No image or values inferred from an image are used. The separate aggregate
+overload-risk heatmap remains unavailable.
+
+Validation: 38 frontend tests passed, as did lint and production builds; the exact-precision
+regression was also rerun after review. All 35 Python tests passed. API controller and stream
+tests passed, including exact CDF tie/count tests, missing/invalid archive handling and
+live-version feature-weight selection. The running M1 version's 51 exported weights matched
+its fitted estimator exactly. Nine browser checks passed for both report panels and all seven
+tabs, including hover labels, top-15/all-feature selection, exact numeric values and mobile
+layout. The CDF test allows the measured archive load time. Desktop/mobile captures were
+inspected, with no horizontal page overflow.

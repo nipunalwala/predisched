@@ -21,11 +21,15 @@ export function ClusterPage() {
     <div className="space-y-4">
       <Card title="Workers">
         <Guard query={workers} empty={(w) => !w.workers.length}>
-          {(w) => (
+          {(w) => <>
+            {w.clusterError && <p role="status" className="mb-3 text-sm text-muted">
+              Worker status is temporarily unavailable while reconnecting to the scheduler.
+            </p>}
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {w.workers.map((row) => <WorkerCard key={String(row.worker_id)} stored={row} live={row.live} />)}
+              {w.workers.map((row) => <WorkerCard key={String(row.worker_id)} stored={row} live={row.live}
+                liveAvailable={!w.clusterError} />)}
             </div>
-          )}
+          </>}
         </Guard>
       </Card>
       <div className="grid gap-4 xl:grid-cols-2">

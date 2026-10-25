@@ -20,6 +20,13 @@ it("reports unavailable cluster data without zero healthy claims", () => {
   expect(screen.getByText("Cluster unavailable")).toBeInTheDocument();
   expect(screen.queryByText(/schedulers reachable/)).not.toBeInTheDocument();
 });
+it("uses a calm status instead of exposing the raw cluster error", () => {
+  const error = "no primary among [scheduler-1:51051, scheduler-2:51052]";
+  render(<SystemStatus overview={{ ...snapshot, cluster: null, clusterError: error }} />);
+  expect(screen.getByText("Waiting for a scheduler connection.")).toBeInTheDocument();
+  expect(screen.queryByText(error)).not.toBeInTheDocument();
+  expect(screen.getByText("Cluster unavailable")).toHaveStyle({ color: "var(--warn)" });
+});
 it("shows degraded when all healthy workers are draining", () => {
   render(<SystemStatus overview={{ ...snapshot, cluster: { ...snapshot.cluster!, nodes: [{ id: 5, address: "scheduler-5", leader: true, reachable: true }], workers: snapshot.cluster!.workers.map((w) => ({ ...w, draining: true })) } }} />);
   expect(screen.getByText("Cluster degraded")).toBeInTheDocument();

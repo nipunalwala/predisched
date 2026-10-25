@@ -48,6 +48,14 @@ describe("WorkerCard", () => {
     render(<WorkerCard stored={{ worker_id: "worker-9", cpu_pct: 0, mem_pct: 0 }} live={null} />);
     expect(screen.getByText("DEAD")).toBeInTheDocument();
   });
+
+  it("does not declare a worker dead when the scheduler snapshot is unavailable", () => {
+    render(<WorkerCard stored={{ worker_id: "worker-1", cpu_pct: 67, mem_pct: 5 }}
+      live={null} liveAvailable={false} />);
+    expect(screen.getByText("UNKNOWN")).toBeInTheDocument();
+    expect(screen.getByText("Last recorded metrics")).toBeInTheDocument();
+    expect(screen.queryByText("DEAD")).not.toBeInTheDocument();
+  });
 });
 
 describe("Explainer", () => {

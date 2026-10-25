@@ -59,6 +59,31 @@ export interface Overview {
 
 export type Row = Record<string, any>;
 
+export interface CdfSeries {
+  strategy: string;
+  runs: number;
+  tasks: number;
+  points: { latencyMs: number; cumulativePct: number }[];
+}
+
+export interface LatencyCdfResponse {
+  suite: string;
+  source: "archive";
+  missingRuns: number;
+  scenarios: { scenario: string; strategies: CdfSeries[] }[];
+}
+
+export interface FeatureImportanceReport {
+  available: boolean;
+  source: "live-registry";
+  model: string;
+  version?: number;
+  candidate?: string;
+  method?: "absolute_standardized_coefficient" | "model_feature_importance";
+  features: { feature: string; importance: number }[];
+  message?: string;
+}
+
 export interface WorkersResponse {
   workers: (Row & { live: WorkerLive | null })[];
   clusterError: string | null;

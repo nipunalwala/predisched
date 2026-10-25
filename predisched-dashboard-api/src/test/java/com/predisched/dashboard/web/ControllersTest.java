@@ -48,6 +48,79 @@ import org.springframework.test.web.servlet.MockMvc;
         "dashboard.admin-rate-per-second=2"})
 class ControllersTest {
 
+    @org.junit.jupiter.api.io.TempDir
+    Path reportRoot;
+
+    @Test
+    void latencyCdfUsesCompletedTaskMeasurementsAndCombinesTies() throws Exception {
+        when(jobs.root()).thenReturn(reportRoot);
+        Path suite = Files.createDirectories(reportRoot.resolve("results/benchmark/example/runs"));
+        Files.writeString(suite.getParent().resolve("runs.csv"),
+                "run_id,scenario,strategy\nr1,steady,predictive\nr2,steady,predictive\nr3,bursty,random\n");
+        String header = "task_id,latency_ms,status\n";
+        Files.writeString(suite.resolve("r1.csv"), header + "a,10,COMPLETED\nb,20,COMPLETED\nc,999,FAILED\nd,-1,COMPLETED\n");
+        Files.writeString(suite.resolve("r2.csv"), header + "e,20,COMPLETED\nf,40,COMPLETED\ng,NaN,COMPLETED\n");
+        Files.writeString(suite.resolve("r3.csv"), header + "h,100,COMPLETED\n");
+        mvc.perform(get("/api/benchmarks/example/latency-cdf"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("archive"))
+                .andExpect(jsonPath("$.scenarios", hasSize(2)))
+                .andExpect(jsonPath("$.scenarios[0].scenario").value("steady"))
+                .andExpect(jsonPath("$.scenarios[0].strategies[0].runs").value(2))
+                .andExpect(jsonPath("$.scenarios[0].strategies[0].tasks").value(4))
+                .andExpect(jsonPath("$.scenarios[0].strategies[0].points", hasSize(3)))
+                .andExpect(jsonPath("$.scenarios[0].strategies[0].points[1].latencyMs").value(20))
+                .andExpect(jsonPath("$.scenarios[0].strategies[0].points[1].cumulativePct").value(75.0))
+                .andExpect(jsonPath("$.scenarios[0].strategies[0].points[2].cumulativePct").value(100.0));
+    }
+
+    @Test
+    void latencyCdfDoesNotInventDataOrFollowUnsafeRunIds() throws Exception {
+        when(jobs.root()).thenReturn(reportRoot);
+        mvc.perform(get("/api/benchmarks/missing/latency-cdf"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.scenarios", hasSize(0)));
+        Path suite = Files.createDirectories(reportRoot.resolve("results/benchmark/example"));
+        Files.writeString(suite.resolve("runs.csv"), "run_id,scenario,strategy\n../../secret,steady,predictive\nmissing,steady,random\n");
+        mvc.perform(get("/api/benchmarks/example/latency-cdf"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.scenarios", hasSize(0)));
+        mvc.perform(get("/api/benchmarks/invalid:directory/latency-cdf"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void featureImportanceFollowsTheLiveRegistryVersionAndReturnsNumericWeights() throws Exception {
+        when(jobs.root()).thenReturn(reportRoot);
+        mvc.perform(get("/api/models/m1/feature-importance"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+        Path models = Files.createDirectories(reportRoot.resolve("ml/models"));
+        Path first = Files.createDirectories(models.resolve("m1/v1"));
+        Path second = Files.createDirectories(models.resolve("m1/v2"));
+        String registry = "{\"models\":{\"m1\":{\"live\":%d,\"versions\":["
+                + "{\"version\":1,\"kept\":\"linear\"},{\"version\":2,\"kept\":\"forest\"}]}}}";
+        Files.writeString(models.resolve("registry.json"), registry.formatted(1));
+        Files.writeString(first.resolve("feature-importance.json"), "{\"method\":\"absolute_standardized_coefficient\","
+                + "\"features\":[{\"feature\":\"log_size\",\"importance\":3.75}]}");
+        Files.writeString(second.resolve("feature-importance.json"), "{\"method\":\"model_feature_importance\","
+                + "\"features\":[{\"feature\":\"cpu_pct\",\"importance\":0.6}]}");
+        mvc.perform(get("/api/models/m1/feature-importance"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(true))
+                .andExpect(jsonPath("$.source").value("live-registry"))
+                .andExpect(jsonPath("$.version").value(1))
+                .andExpect(jsonPath("$.features[0].feature").value("log_size"))
+                .andExpect(jsonPath("$.features[0].importance").value(3.75))
+                .andExpect(jsonPath("$.imageUrl").doesNotExist());
+        Files.writeString(models.resolve("registry.json"), registry.formatted(2));
+        mvc.perform(get("/api/models/m1/feature-importance"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(2))
+                .andExpect(jsonPath("$.features[0].feature").value("cpu_pct"))
+                .andExpect(jsonPath("$.features[0].importance").value(0.6));
+        mvc.perform(get("/api/models/m4/feature-importance")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/models/m2/feature-importance"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false));
+    }
+
     @TestConfiguration
     @EnableConfigurationProperties(DashboardProperties.class)
     static class Config {}

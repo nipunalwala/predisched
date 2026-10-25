@@ -1,5 +1,19 @@
 # Prediction server
 
+## Feature weights for the dashboard
+
+Model saves export fitted numeric feature weights into each version's
+`feature-importance.json`. `ModelSet.load` also backfills the currently registered live
+versions, so existing models need no retraining or version change. Export writes atomically;
+an unwritable registry logs a warning and inference continues. Baselines without feature
+weights do not produce fabricated importances.
+
+The dashboard API reads the sidecar from the registered live version through its existing
+read-only model-volume mount. The chart uses absolute standardized coefficients for linear
+models and native model importances for trees. These weights change when the fitted model
+changes, rather than with each task. Tests compare every exported weight with the fitted
+estimator and cover legacy backfill and version isolation.
+
 Prompt 17, spec §10.4, §12.3. A Python gRPC `PredictionService` serves the three prompt 16 models
 (`docs/components/ml-models.md`) to the scheduler. One `Predict` call covers one task and all of
 its candidate workers, and returns a prediction per worker. The Java `PredictionClient` calls it

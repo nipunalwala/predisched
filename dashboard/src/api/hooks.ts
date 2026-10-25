@@ -6,7 +6,24 @@ import type {
   Row,
   TaskDetail,
   WorkersResponse,
+  LatencyCdfResponse,
+  FeatureImportanceReport,
 } from "./types";
+
+export const useLatencyCdf = (suite: string) => useQuery({
+  queryKey: ["latency-cdf", suite],
+  queryFn: () => getJson<LatencyCdfResponse>(`/api/benchmarks/${encodeURIComponent(suite)}/latency-cdf`),
+  enabled: !!suite,
+  staleTime: 30_000,
+  refetchInterval: 30_000,
+});
+
+export const useFeatureImportance = () => useQuery({
+  queryKey: ["feature-importance", "m1"],
+  queryFn: () => getJson<FeatureImportanceReport>("/api/models/m1/feature-importance"),
+  staleTime: 10_000,
+  refetchInterval: 10_000,
+});
 
 // Polling reads (TanStack Query); the live stream fills in between (stream/store.ts).
 export const useOverview = () =>

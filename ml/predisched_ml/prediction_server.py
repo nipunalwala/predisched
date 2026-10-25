@@ -81,6 +81,11 @@ class ModelSet:
         test_mae = 0.0
         for model_id in MODELS:
             obj, meta = registry.load(model_id, root)
+            try:
+                registry.export_feature_importance(obj, registry.live_folder(model_id, root, int(meta["version"])))
+            except OSError as error:
+                # A read-only registry must not prevent inference; the UI reports absent weights.
+                log.warning("Cannot export feature weights for %s v%s: %s", model_id, meta["version"], error)
             loaded[model_id] = obj
             versions[model_id] = int(meta["version"])
             if model_id == "m1":

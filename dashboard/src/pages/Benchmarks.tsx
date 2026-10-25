@@ -4,6 +4,7 @@ import { useBenchmarks } from "../api/hooks";
 import type { Row } from "../api/types";
 import { StrategyBars, StrategyRadar, suiteCells } from "../components/BenchmarkCharts";
 import { BenchmarkComparison } from "../components/BenchmarkComparison";
+import { LatencyCdf } from "../components/LatencyCdf";
 import { Button, Card, Guard, PanelState } from "../components/ui/primitives";
 import { metricLabel, metricValue } from "../format";
 
@@ -57,14 +58,14 @@ export function BenchmarksPage() {
         <Card title="Overall profile (normalised per scenario)">
           {cells.length ? <StrategyRadar cells={cells} /> : <PanelState kind="empty" />}
         </Card>
-        <Card title="Latency CDF overlay">
-          <PanelState kind="notbuilt" message="Not built yet: needs per-task latencies the API does not serve; the suite report has it" />
-          <div className="flex flex-wrap justify-center gap-3 text-sm">
-            {(benchmarks.data?.reports ?? []).map((r) => (
-              <a key={r} href={`${API_URL}/${r}`} className="text-accent underline" target="_blank" rel="noreferrer">{r.split("/").slice(-1)[0]} report</a>
-            ))}
-          </div>
-        </Card>
+        <LatencyCdf key={chosen} suite={chosen} />
+      </div>
+      <div className="flex flex-wrap gap-3 text-sm">
+        {(benchmarks.data?.reports ?? []).map((r) => (
+          <a key={r} href={`${API_URL}/${r}`} className="text-accent underline" target="_blank" rel="noreferrer">
+            {r.split("/").slice(-1)[0]} report
+          </a>
+        ))}
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <Card title="Run history">

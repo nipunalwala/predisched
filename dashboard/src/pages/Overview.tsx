@@ -27,7 +27,7 @@ export function OverviewPage() {
               <WorkloadControl ready={o.cluster.leaderId != null && !o.cluster.paused && o.cluster.workers.some((w) => w.healthy && !w.draining)}
                 idle={o.cluster.queueDepth === 0 && o.cluster.running === 0 && o.cluster.nodes.every((n) => n.reachable) && o.cluster.workers.every((w) => w.healthy)} />
               <Topology cluster={o.cluster} />
-            </> : <PanelState kind="error" message={o.clusterError} />}
+            </> : <PanelState kind="empty" message="Waiting for a scheduler connection." />}
           </Guard>
         </Card>
         <Card title="Busy slots">

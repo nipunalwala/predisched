@@ -53,11 +53,13 @@ java -jar predisched-dashboard-api/target/predisched-dashboard-api.jar [--dashbo
 | `GET /api/queue/forecast?minutes=` | DB | Queued tasks per second, next to the M2 forecasts shifted by their 5 s horizon |
 | `GET /api/predictions/accuracy?limit=` | DB | Recent `prediction_outcomes`, MAE per type, rolling MAE |
 | `GET /api/models` | `registry.json` + meta + DB | Versions with status and test metrics, recent `DRIFT` events |
+| `GET /api/models/{model}/feature-importance` | Live registry + versioned numeric weights | Registered live version, fitted candidate, method and full-precision feature weights from that version's `feature-importance.json`; model restricted to `m1`, `m2`, `m3` |
 | `POST /api/models/{v}/promote?model=m1&force=` | registry CLI | The prompt 21 promotion rule; **409** when refused |
 | `GET /api/cluster/leader` | every scheduler + DB | Leader, each node's view, the last election events |
 | `GET /api/replication/status` | DB | Per node: last sequence number, lag behind the head |
 | `GET /api/clock/offsets` | DB | Each node's last clock-sync offsets |
 | `GET /api/benchmarks` | DB + results | Suites, runs, generated reports |
+| `GET /api/benchmarks/{suite}/latency-cdf` | Saved per-task CSVs | Exact empirical CDF by scenario and strategy, task/run counts and missing-run count; completed finite non-negative latencies including warm-up |
 | `POST /api/benchmarks/run` | job | Starts `run-suite` (`{"scenario", "reps", "suiteId"}`); 202 with `runId`; progress on `/topic/events` |
 | `GET /api/benchmarks/jobs/{id}` | job | Status and last output lines |
 | `POST /api/simulate` | simulator | What-if run (`{"trace", "strategy", "speed", "workers", "seed"}`), labelled as a simulation |
