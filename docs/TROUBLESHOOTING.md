@@ -3,6 +3,28 @@
 Problems met while building and running PrediSched, mostly on Windows, and what fixed them. Each
 entry links to the component doc with the full story.
 
+## Dashboard loads on the LAN but reports OFFLINE
+
+Open `http://<host-LAN-IP>:5173/dashboard` from the other computer. `localhost` on that
+computer refers to itself. Find the host's Wi-Fi/Ethernet IPv4 address with `ipconfig`.
+
+The nginx proxy must forward `Host $http_host`, including `:5173`, to the API and
+WebSocket routes. Forwarding `$host` removes the port, causing Spring's same-origin
+checks to reject a LAN browser's `Origin` with HTTP 403. Keep the host and port intact;
+there is no need to allow arbitrary cross-origin WebSocket connections.
+
+After changing the proxy, rebuild and recreate the dashboard:
+
+```powershell
+docker compose -f docker/docker-compose.yml up -d --build --no-deps dashboard
+```
+
+If the page itself cannot load, check that both computers can reach each other and that
+Windows permits inbound TCP 5173 from the local network. This differs from a page that
+loads but cannot connect its live stream. The regression check is
+`npx playwright test e2e/lan.spec.ts --workers=1`; set `DASHBOARD_URL` to the host's LAN
+URL to exercise that address.
+
 ## Ports
 
 **Symptom.** A node fails at start with `Failed to bind to address` or
